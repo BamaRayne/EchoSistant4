@@ -1,6 +1,7 @@
 /* 
 * EchoSistant Rooms Profile - EchoSistant Add-on
 *
+*		11/25/2018		Version:4.6 R.0.1.5		Bug fix for individual lights feedback
 *		11/24/2018		Version:4.6 R.0.1.4		Completed code for compound devices and compound groups commands
 *		11/23/2018		Version:4.6 R.0.1.3		Code Cleanup prep for release with Version Change
 * 		11/21/2018		Version:4.5 R.0.1.2		Improved performance and outputs
@@ -53,6 +54,10 @@ definition(
 private release() {
 	def text = "R.0.4.6"
 }
+private revision(text) {
+	text = "Version 4.6, Revision 0.1.5"
+    return text
+    }
 /**********************************************************************************************************************************************/
 preferences {
 
@@ -819,6 +824,15 @@ def profileFeedbackEvaluate(params) {
             
            if(parent.debug) log.debug "I have received a feedback command: ${command}, deviceType:  ${deviceType}, with this text: ${tts}"
 
+	if (tts.contains("current revision")) {
+    	def roomsRev = revision(text)
+        def parentRev = parent.release()
+//        def shortRev = childApps.find.release()
+        outputTxt = "The current Echosistant Parent app Revision is, $parentRev. The Rooms Revision is, $roomsRev" //, and the ShortCuts Revision is $shortRev"
+	    return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
+        }
+
+
 	//// LIGHTS INDIVIDUAL FEEDBACK
             fbLights.each { s ->
                 def lMatch = s.label.toLowerCase()
@@ -827,20 +841,21 @@ def profileFeedbackEvaluate(params) {
                     }
                 if (tts.contains("$lMatch")) {
                     def fbLightsStatus = s?.latestValue("switch")
+                    log.debug "light status is: $fbLightsStatus"
                     if (tts.contains("on")) {
-                        if (fbLightsStatus.contains("on")) {
-                            outputTxt = "Yes, the $lMatch is on"
+                        if (fbLightsStatus == "on") {
+                            outputTxt = "Yes, the $lMatch is $fbLightsStatus"
                         }
-                        if (fbLightsStatus.contains("off")) {
-                            outputTxt = "No, the $lMatch is currently off"
+                        if (fbLightsStatus == "off") {
+                            outputTxt = "No, the $lMatch is $fbLightsStatus"
                         }
                     }
-                    if (tts.contains("off")) {    
-                        if (fbLightsStatus.contains("off")) {
-                            outputTxt = "Yes, the $lMatch is off"
+                    else {    
+                        if (fbLightsStatus == "off") {
+                            outputTxt = "Yes, the $lMatch is $fbLightsStatus"
                         }
-                        if (fbLightsStatus.contains("on")) {
-                            outputTxt = "No, the $lMatch is off"
+                        if (fbLightsStatus == "on") {
+                            outputTxt = "No, the $lMatch is $fbLightsStatus"
                         }
                     }
                 }
@@ -1253,6 +1268,7 @@ def profileEvaluate(params) {
     def outputTxt
     log.debug "the SwitchList is: $switchList"
 
+        
 // CANCEL ALL SCHEDULED TIMERS/DELAYS
 	if (tts.contains("cancel the delay") || tts.contains("cancel the timer")) {
     	unschedule(resetTts)
