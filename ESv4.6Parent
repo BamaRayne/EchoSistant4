@@ -1,5 +1,5 @@
 /* 
- * EchoSistant v4.5 - Total voice control of your SmartThings Home.
+ * EchoSistant v4.6 - Control and Feedback of your Smart Things Environment via Natural Conversations with Alexa.
  
  
  ************************************ FOR INTERNAL USE ONLY ******************************************************
@@ -33,10 +33,10 @@ import java.security.MessageDigest
 include 'asynchttp_v1'
 
 definition(
-	name			: "EchoSistant v4.6",
+	name			: "EchoSistant",
     namespace		: "Echo",
     author			: "JH/BD",
-	description		: "Total voice control of your SmartThings Home.",
+	description		: "Control and Feedback of your Smart Things Environment via Natural Conversations with Alexa.",
 	category		: "My Apps",
     singleInstance	: true,
 	iconUrl			: "https://raw.githubusercontent.com/BamaRayne/Echosistant/master/smartapps/bamarayne/echosistant.src/app-Echosistant.png",
@@ -49,7 +49,7 @@ private def textVersion() {
 	def text = "1.0"
 }
 private release() {
-    def text = "R.0.0.1"
+    def text = "Version 4.6, Revision 0.0.1"
 }
 /**********************************************************************************************************************************************/
 preferences {   
@@ -133,13 +133,13 @@ def mProfiles() {
     dynamicPage (name: "mProfiles", title: "Create and Manage Rooms", install: true, uninstall: false) {
         if (childApps?.size()>0) {  
             section("",  uninstall: false){
-                app(name: "EchoSistant Rooms v4.6", appName: "EchoSistant Rooms v4.6", namespace: "Echo", title: "Create a New Room", displayChildApps: false, multiple: true,  uninstall: false)
+                app(name: "EchoSistant Rooms", appName: "EchoSistant Rooms", namespace: "Echo", title: "Create a New Room", displayChildApps: false, multiple: true,  uninstall: false)
             }
         }
         else {
             section("",  uninstall: false){
                 paragraph "NOTE: Looks like you haven't created any Rooms yet.\n \nPlease make sure you have installed the EchoSistant Rooms Add-on before creating a new Profile!"
-                app(name: "EchoSistant Rooms v4.6", appName: "EchoSistant Rooms v4.6", namespace: "Echo", title: "Create a New Room", multiple: true,  uninstall: false)
+                app(name: "EchoSistant Rooms", appName: "EchoSistant Rooms", namespace: "Echo", title: "Create a New Room", multiple: true,  uninstall: false)
             }
         }
     }
