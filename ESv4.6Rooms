@@ -895,7 +895,7 @@ def profileFeedbackEvaluate(params) {
             if (tts.contains("check")) {
           	if (tts.contains("lock") || tts.contains("door") || tts.contains("window") || tts.contains("vent") || tts.contains("shades") || tts.contains("blind") || tts.contains("curtain")) {
           		fCommand = "open" }}
-			log.debug "fDevice == $fDevice && fValue == $fValue && fCommand == $fCommand"
+			
 		// ALEXA DEVICES - LAST THING SPOKEN
         if (tts.contains("last thing said")) {
         	def result = "The last thing spoken on the " +  "${sSpeaker}" + " was, " + sSpeaker.currentState("lastSpeakCmd")?.stringValue
@@ -954,27 +954,25 @@ def profileFeedbackEvaluate(params) {
                 }                            
             }
             
-            // POWER CONSUMPTION
-            	if (tts.contains("how much power") || tts.contains("power usage")) {
-        		def result 
+            // POWER CONSUMPTION AEON SWITCHES
+/*            	if (tts.contains("how much power") || tts.contains("power usage")) {
+                def result 
                 def devList = []
                 def currWatts = []
                 def wattsUsed = []
                 if (fPower) {
-                fPower.each { deviceName ->
+                devices.each { deviceName ->
                 	String device = (String) deviceName
                     devList += device
                     
                 
                 def sensor = fPower?.size()
                 def powerAVG = deviceName ? getAverage(fPower, "power") : "undefined device"
-                def longWatts = "(Consumed: ${fPower?.currentState('energy')?.value}kWh))\nMaximum of ${fPower?.currentState('powerTwo')?.value}"
-             //   currWatts = (deviceName?.currentState('power'))?.value//  IRIS SMART PLUG
-             //   wattsUsed = (deviceName?.currentState('power'))?.value//  IRIS SMART PLUG
+                def longWatts = "(Consumed: ${fPower?.currentState('energy')?.value}kWh))\nMaximum of ${devices?.currentState('powerTwo')?.value}"
+                currWatts = (deviceName?.currentState('power'))?.value//  IRIS SMART PLUG
+                wattsUsed = (deviceName?.currentState('power'))?.value//  IRIS SMART PLUG
                 currWatts = (deviceName?.currentState('powerDisp'))?.value  // AEON POWER METER
                 wattsUsed = (deviceName?.currentState('energy'))?.value  // AEON POWER METER
-             //   currWatts = currWatts*.value.sum()
-             //   wattsUsed = wattsUsed*.value.sum()
                 def watts = "${wattsUsed}"?.replaceAll("\\D", "") as double  // AEON POWER METER
                 def costs = "${fCosts}" as double 
                 def resetDate = (fPower?.currentState('powerOne'))?.value
@@ -982,7 +980,7 @@ def profileFeedbackEvaluate(params) {
                 log.info "devList = $devList"
                 log.info "currWatts = $currWatts & the costs = $costs for a total cost of " + total + " using a total of " + wattsUsed + " watts"
                 if (devList?.size() > 1) {
-                	result = "There is currently an average of $powerAVG watts being used in the $app.label. The total watts used has been $wattsUsed Kilowatts, for a total cost of ${total} U.S. dollars"
+                	result = "There is currently an average of $powerAVG watts being used in the $app.label."// The total watts used has been $wattsUsed Kilowatts, for a total cost of ${total} U.S. dollars"
                 	} 
                     else {
                     	result = "There is currently $powerAVG watts being used in the $app.label. The total watts used has been $wattsUsed Kilowatts, for a total cost of ${total} U.S. dollars" 
@@ -992,9 +990,47 @@ def profileFeedbackEvaluate(params) {
             	outputTxt = stripBrackets(result ? " $result " : "")
             	return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
 				}
-            }
+            }*/
            
-            /// CHECK FOR MOTION
+           
+           // POWER CONSUMPTION IRIS SMART PLUGS
+            	if (tts.contains("how much power") || tts.contains("power usage")) {
+                def result 
+                def devList = []
+             //   def currWatts = []
+             //   def wattsUsed = []
+                if (fPower) {
+                fPower.each { deviceName ->
+                	String device = (String) deviceName
+                    devList += device
+                    
+                log.debug "The current Iris device is: $deviceName && the power being used is " + fPower.currentValue("power") 
+                def sensor = fPower?.size()
+                def powerAVG = deviceName ? getAverage(fPower, "power") : "undefined device"
+          //      def longWatts = "(Consumed: ${fPower?.currentState('energy')?.value}kWh))\nMaximum of ${devices?.currentState('powerTwo')?.value}"
+                def currWatts = (deviceName?.currentValue('power'))//?.value//  IRIS SMART PLUG
+                def wattsUsed = (deviceName?.currentValue('sensor'))//?.value//  IRIS SMART PLUG
+          //      def watts = "${wattsUsed}"?.replaceAll("\\D", "") as double  // AEON POWER METER
+                def costs = "${fCosts}" as double 
+          //      def resetDate = (ofPower?.currentState('powerOne'))?.value
+          //      def total = ((watts*costs)/1000).round(2)
+           //     log.info "devList = $devList"
+          //      log.info "currWatts = $currWatts & the costs = $costs for a total cost of " + total + " using a total of " + wattsUsed + " watts"
+                if (devList?.size() > 1) {
+                	result = "There is currently an average of $powerAVG watts being used in the $app.label."// The total watts used has been $wattsUsed Kilowatts, for a total cost of ${total} U.S. dollars"
+                	} 
+                    else {
+                    	result = "There is currently $currWatts watts being used in the $app.label."// The total watts used has been $wattsUsed Kilowatts, for a total cost of ${total} U.S. dollars" 
+                        }
+                        }
+            	log.info "$fPower Iris Device: power usage is --> $currWatts"
+            	outputTxt = stripBrackets(result ? " $result " : "")
+            	return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
+				}
+            }
+         
+         
+         /// CHECK FOR MOTION
             if (tts.contains("motion") || tts=="is there" || tts=="is anyone" || tts=="is there anyone" || tts=="is something moving" || tts=="is someone" || tts=="is there someone") {
                 if (fMotion == null) {
                 outputTxt = "There are no sensors selected for me to determine if there is motion in the ${app.label}"
@@ -1229,7 +1265,7 @@ def profileEvaluate(params) {
     def timer = tts.replaceAll("\\D+","").toInteger();
     def newOutPut = tts.replaceAll("\\bin|minutes|minute|${timer}\\b", "");
         if ("$timer" <= 1) {
-        	outputTxt = "Ok, I will $newOutPut in $timer minute" // in $timer minutes"
+        	outputTxt = "Ok, I will $newOutPut in $timer minute" 
             }
             else { outputTxt = "Ok, I will $newOutPut in $timer minutes" 
             }
@@ -1238,9 +1274,9 @@ def profileEvaluate(params) {
 	    return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
         }
 	else {
-
+	
     
-// PARSE INCOMING TTS INTO INDIVIDUAL COMMANDS   
+// PARSE INCOMING TTS INTO INDIVIDUAL COMMANDS  
     def newTts1
     def newTts2
 
@@ -1383,6 +1419,15 @@ def compoundCmd(newTts1, newTts2, switchList, params) {
                     runIn(0, secondGroup)
                     return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
     				}
+            else if (("${newTts1}".contains("turn")) && (!"${newTts2}".contains("turn"))) { // sends a message that contains the word AND to a speaker
+                	outputTxt = "I have $newTts1, and I have sent your message to $app.label"
+                    state.tts = "${newTts1}"
+                    groupCmd(params)
+                    state.tts = "${newTts2}"
+                    runIn(0, secondGroup)
+                    return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
+    				}
+    
             else {
         		outputTxt = "I'm sorry, but you have not given a valid command"
 			}
@@ -1402,6 +1447,7 @@ def secondGroup() {
     log.debug "secondGroup executed with: $params"
     groupCmd(params)
     }
+    
 /******************************************************************************************************
 SPEECH AND TEXT PROCESSING INTERNAL - SINGLE COMMANDS, GENERAL COMMANDS, AND GROUPS
 ******************************************************************************************************/
