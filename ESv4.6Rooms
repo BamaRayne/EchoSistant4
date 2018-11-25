@@ -1,6 +1,7 @@
 /* 
 * EchoSistant Rooms Profile - EchoSistant Add-on
 *
+*		11/24/2018		Version:4.6 R.0.1.4		Completed code for compound devices and compound groups commands
 *		11/23/2018		Version:4.6 R.0.1.3		Code Cleanup prep for release with Version Change
 * 		11/21/2018		Version:4.5 R.0.1.2		Improved performance and outputs
 *		11/19/2018		Version:4.5 R.0.1.1		Add in cancel of delay/timers
@@ -39,12 +40,12 @@ include 'asynchttp_v1'
 
 
 definition(
-	name			: "EchoSistant Rooms v4.6",
+	name			: "EchoSistant Rooms",
     namespace		: "Echo",
     author			: "JH/BD",
 	description		: "EchoSistant Rooms - Custom rooms and Custom Control",
 	category		: "",
-    parent			: "Echo:EchoSistant v4.6",
+    parent			: "Echo:EchoSistant",
 	iconUrl			: "https://raw.githubusercontent.com/BamaRayne/Echosistant/master/smartapps/bamarayne/echosistant.src/app-Echosistant.png",
 	iconX2Url		: "https://raw.githubusercontent.com/BamaRayne/Echosistant/master/smartapps/bamarayne/echosistant.src/app-Echosistant@2x.png",
 	iconX3Url		: "https://raw.githubusercontent.com/BamaRayne/Echosistant/master/smartapps/bamarayne/echosistant.src/app-Echosistant@2x.png")
@@ -118,13 +119,13 @@ def Shortcuts(){
 	dynamicPage(name: "Shortcuts", title: "Create shortcut phrases and custom Alexa responses", uninstall: false){
 		if (childApps?.size()>0) {
 			section("",  uninstall: false){
-            app(name: "EchoSistant Rooms Shortcuts v4.6", appName: "EchoSistant Rooms Shortcuts v4.6", namespace: "Echo", title: "Create a New ShortCut", displayChildApps: false, multiple: true,  uninstall: false)
+            app(name: "EchoSistant Rooms Shortcuts", appName: "EchoSistant Rooms Shortcuts", namespace: "Echo", title: "Create a New ShortCut", displayChildApps: false, multiple: true,  uninstall: false)
             }
         }
         else {
             section("",  uninstall: false){
                 paragraph "NOTE: Looks like you haven't created any Rooms yet.\n \nPlease make sure you have installed the EchoSistant Shortcuts Add-on before creating a new Profile!"
-                app(name: "EchoSistant Rooms Shortcuts v4.6", appName: "EchoSistant Rooms Shortcuts v4.6", namespace: "Echo", title: "Create a New Shortcut", multiple: true,  uninstall: false)
+                app(name: "EchoSistant Rooms Shortcuts", appName: "EchoSistant Rooms Shortcuts", namespace: "Echo", title: "Create a New Shortcut", multiple: true,  uninstall: false)
             }
 		}
     }
@@ -1248,7 +1249,8 @@ def profileEvaluate(params) {
     log.trace "newTts1 is: $newTts1"
     log.trace "newTts2 is: $newTts2"
 
-    if (newTts1 != newTts2) {  	// COMPOUND COMMANDS
+
+	if (newTts1 != newTts2) {  	// COMPOUND COMMANDS
         compoundCmd(newTts1, newTts2, switchList, params)
     }
     else if (newTts1 == newTts2) {
@@ -1285,8 +1287,8 @@ def delayActions(params) {
     newTts2 = tts.replaceAll("\\b${newTts1}and|and.*\\b", "");
     log.trace "newTts1 is: $newTts1"
     log.trace "newTts2 is: $newTts2"
-
-    if (newTts1 != newTts2) {  	// COMPOUND COMMANDS
+compoundCmd(newTts1, newTts2, switchList, params)
+/*    if (newTts1 != newTts2) {  	// COMPOUND COMMANDS
         compoundCmd(newTts1, newTts2, switchList, params)  
     }
     else if (newTts1 == newTts2) {
@@ -1297,7 +1299,7 @@ def delayActions(params) {
             	groupCmd(params) 
                 
         }
-    }
+    }*/
 }
 
 /******************************************************************************************************
@@ -1305,7 +1307,7 @@ SPEECH AND TEXT PROCESSING INTERNAL - COMPOUND COMMANDS PROCESSING
 ******************************************************************************************************/
 def compoundCmd(newTts1, newTts2, switchList, params) {
     log.trace "The compoundCmd method has been activated with this message: ($newTts1) & ($newTts2)"
-    
+    def tts = params.tts
     def intent = params.pintentName        
     def childName = app.label 
     //Output Variables
@@ -1326,7 +1328,7 @@ def compoundCmd(newTts1, newTts2, switchList, params) {
     switchList?.each { m -> 
         def mMatch = m.label.toLowerCase()
         log.info "mMatch is: $mMatch"
-                
+
         if(newTts1.contains("${mMatch}")) {
             if (newTts1.contains("turn on")) {
                 m.on()
@@ -1340,36 +1342,66 @@ def compoundCmd(newTts1, newTts2, switchList, params) {
             }
         }
         if(newTts1 != newTts2) {
-        if(newTts2.contains("${mMatch}")) {
-            if (newTts2.contains("turn on")) {
-                m.on()
-                cmd2 = " turned on"
-                m2 = "$m"
-            }
-            if (newTts2.contains("turn off")) {
-                m.off()
-                cmd2 = " turned off"
-                m2 = "$m"
+            if(newTts2.contains("${mMatch}")) {
+                if (newTts2.contains("turn on")) {
+                    m.on()
+                    cmd2 = " turned on"
+                    m2 = "$m"
+                }
+                if (newTts2.contains("turn off")) {
+                    m.off()
+                    cmd2 = " turned off"
+                    m2 = "$m"
                 }
             }
         }
     }
-    
+
     if (("${cmd1}".contains("turned on") || "${cmd1}".contains("turned off")) && ("${cmd2}".contains("turned on") || "${cmd2}".contains("turned off"))) {
-   	outputTxt = "I have $cmd1 the $m1 and I have $cmd2 the $m2"
-    }
-    else if ("${cmd1}"?.contains("turned") || ("${cmd2}" == null)) {
-    	outputTxt = "I have $cmd1 the $m1, but I can not $newTts2 due to the compound commands feature currently being limited to individual devices."
-        }
-    	else if ("${cmd2}"?.contains("turned") || ("${cmd1}" == null)) {
-    		outputTxt = "I have $cmd2 the $m2, but I can not $newTts1 due to the compound commands feature currently being limited to individual devices."
-        	}
-        else {
-     	outputTxt = "I'm sorry, but the compound commands feature is currently limited to individual devices, and you have included multiple groups."
-        }
+        outputTxt = "I have $cmd1 the $m1 and I have $cmd2 the $m2"  // INDIVIDUAL DEVICE COMPOUND COMMAND
+    	}
+    	else if ("${cmd1}"?.contains("turned") || ("${cmd2}" == null)) { // 1st cmd = ind device & 2nd command is a group
+        	outputTxt = "I have $cmd1 the $m1, and I have $newTts2"
+    			state.tts = "${newTts2}"
+            	runIn(0, secondGroup)
+            	}
+    		else if ("${cmd2}"?.contains("turned") || ("${cmd1}" == null)) { // 1st cmd is a group & 2nd command is an ind device
+        		outputTxt = "I have $cmd2 the $m2, and I have $newTts1"
+    				state.tts = "${newTts1}"
+            		runIn(0, secondGroup)
+    				}
+    			else if (!("${newTts1}".contains("turn")) && !("${newTts2}".contains("turn"))) { // sends a message to a speaker
+        			outputTxt = "Your message has been sent to $app.label"
+        			groupCmd(params)
+        	return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
+    		}
+            else if (("${newTts1}".contains("turn")) && ("${newTts2}".contains("turn"))) { // sends a message that contains the word AND to a speaker
+                	outputTxt = "I have $newTts2, and I have $newTts1"
+                    state.tts = "${newTts1}"
+                    groupCmd(params)
+                    state.tts = "${newTts2}"
+                    runIn(0, secondGroup)
+                    return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
+    				}
+            else {
+        		outputTxt = "I'm sorry, but you have not given a valid command"
+			}
     return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
 }    
+def secondGroup() {
+    def tts = state.tts
+    def newTts1
+    def newTts2
 
+    newTts1 = tts.replaceAll("\\band.*\\b", ""); 
+    newTts2 = tts.replaceAll("\\b${newTts1}and|and.*\\b", "");
+    log.trace "newTts1 is: $newTts1"
+    log.trace "newTts2 is: $newTts2"
+
+	def params = $newTts2
+    log.debug "secondGroup executed with: $params"
+    groupCmd(params)
+    }
 /******************************************************************************************************
 SPEECH AND TEXT PROCESSING INTERNAL - SINGLE COMMANDS, GENERAL COMMANDS, AND GROUPS
 ******************************************************************************************************/
@@ -1574,7 +1606,7 @@ def groupCmd(params) {
                         outputTxt = "Ok, turning the $childName automations $command"
                     }
                 }    
-                return outputTxt //["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
+                return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
             }
         }
         //FANS CONTROL
@@ -1583,7 +1615,7 @@ def groupCmd(params) {
                 if (command == "on" || command == "off") {
                     gFans?."${command}"()
                     outputTxt = "Ok, turning the fan " + command
-                    return outputTxt //["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
+                    return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
                 }
                 else if (command == "decrease" || command == "increase" || command == "high" || command == "medium" || command == "low"){
                     data =  ["command": command, "deviceType": deviceType]
@@ -1985,7 +2017,7 @@ def ttsHandler() {
         state.pContCmds = true
         outputTxt = "Ok, activating conversational features. To deactivate just say, stop the conversation"
         log.debug "outputTxt = $outputTxt"
-        return outputTxt //["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
+        return outputTxt
     }
     if (tts == ("repeat last message")) {
         outputTxt = "The last message sent to ${app.label} was, " + state.lastMessage
@@ -2051,7 +2083,7 @@ SPEECH AND TEXT ACTION
 ******************************************************************************************************/
 def ttsActions(tts) {
 log.info "ttsactions have been called by: $tts"
-    tts = tts
+//    tts = tts
     def msg = tts
     def String ttx = (String) null 	
     def String = tts
@@ -2580,11 +2612,11 @@ private getCommand(text){
     
     //Disable Switches
     //if (gDisable){
-    if (text=="stop the automations" || text=="turn the automations off" || text=="turn off the automations" || text?.startsWith("cut off") || text?.startsWith("disengage") || text?.startsWith("disable automation") || text?.startsWith("stop turning the") || text?.startsWith("stop the motion sensor") || text?.startsWith ("turn the motion sensor off") || text?.startsWith("stop the sensor") || text?.startsWith("kill the automation") || text?.contains("kill the sensor") || text?.contains("sensor off")){
+    if (text=="stop the automations" || text?.startsWith("cut off") || text?.startsWith("disengage") || text?.startsWith("disable automation") || text?.startsWith("stop turning the") || text?.startsWith("kill the automation") || text?.contains("kill the sensor")){
         command = "off"
         deviceType = "disable"
     }
-    else if (text=="start the automations" || text=="turn the automations on" || text=="turn on the automations" || text?.startsWith("cut on") || text?.startsWith("engage") ||text?.contains("enable automation") || text?.startsWith("start turning the") || text?.startsWith("start the motion sensor") || text?.startsWith("turn the motion sensor on") || text?.startsWith ("start the sensor")|| text?.contains("sensor on")){
+    else if (text=="start the automations" || text?.startsWith("cut on") || text?.startsWith("engage") || text?.startsWith("start turning the") || text?.startsWith ("start the sensor")){
         command = "on"
         deviceType = "disable"
     }
