@@ -1,0 +1,46 @@
+{
+namespace: "Echo",
+repoOwner: "bamarayne",
+repoName: "EchoSistant4",
+repoBranch: "master",
+name: "EchoSistant",
+author: "JH/BD",
+description: "Control and Feedback of your Smart Things Environment via Natural Conversations with Alexa.",
+category: "My Apps",
+videoUrl: "",
+photoUrl: "",
+bannerUrl: "",
+smartApps: {
+parent: {
+name: "EchoSistant",
+iconUrl: "https://raw.githubusercontent.com/BamaRayne/Echosistant/master/smartapps/bamarayne/echosistant.src/app-Echosistant.png",
+published: true,
+oAuth: true,
+appSettings: { },
+version: "4.6",
+appUrl: "https://github.com/BamaRayne/EchoSistant4/blob/master/ESv4.6Parent"
+},
+children: [
+{
+name: "EchoSistant Rooms",
+iconUrl: "https://raw.githubusercontent.com/BamaRayne/Echosistant/master/smartapps/bamarayne/echosistant.src/app-Echosistant.png",
+published: true,
+oAuth: false,
+appUrl: "https://github.com/BamaRayne/EchoSistant4/blob/master/ESv4.6Rooms",
+appSettings: { },
+version: "4.6",
+optional: false
+},
+{
+name: "EchoSistant Rooms Shortcuts",
+iconUrl: "https://raw.githubusercontent.com/BamaRayne/Echosistant/master/smartapps/bamarayne/echosistant.src/app-Echosistant.png",
+published: true,
+oAuth: false,
+appUrl: "https://github.com/BamaRayne/EchoSistant4/blob/master/ESv4.6ShortCuts",
+appSettings: { },
+version: "4.6",
+optional: false
+},
+
+deviceHandlers: [ ]
+}
