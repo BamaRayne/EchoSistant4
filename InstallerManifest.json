@@ -1,0 +1,56 @@
+{
+    "namespace": "Echo",
+    "repoOwner": "bamarayne",
+    "repoName": "Echosistant4",
+    "repoBranch": "master",
+    "name": "Echosistant4",
+    "author": "JH/BD",
+    "description": "Control and Feedback of your Smart Things Environment via Natural Conversations with Alexa.",
+    "category": "My Apps",
+    "bannerUrl": "https://raw.githubusercontent.com/BamaRayne/Echosistant/master/smartapps/bamarayne/echosistant.src/app-Echosistant.png",
+    "forumUrl": "https://community.smartthings.com/t/release-echosistant-ver4-6/143631?u=bamarayne",
+    "docUrl": "http://thingsthataresmart.wiki/index.php?title=Echosistant",
+    "releaseType": "production",
+    "keywords": [
+        "amazon",
+        "alexa",
+        "echo",
+        "echosistant",
+        "voice",
+        "assistant"
+    ],
+    "notes": "Any important note you want displayed...",
+    "smartApps": {
+        "parent": {
+            "name": "Echosistant",
+            "iconUrl": "https://raw.githubusercontent.com/BamaRayne/Echosistant/master/smartapps/bamarayne/echosistant.src/app-Echosistant.png",
+            "published": true,
+            "oAuth": true,
+            "version": "4.6",
+            "appSettings": {},
+            "appUrl": "smartapps/echo/echosistant.src/echosistant.groovy"
+        },
+        "children": [{
+                "name": "EchoSistant Rooms",
+                "iconUrl": "https://raw.githubusercontent.com/BamaRayne/Echosistant/master/smartapps/bamarayne/echosistant.src/app-Echosistant.png",
+                "published": true,
+                "oAuth": false,
+                "version": "4.6",
+                "appSettings": {},
+                "appUrl": "smartapps/echo/echosistant-rooms.src/echosistant-rooms.groovy",
+                "optional": false
+            },
+            {
+                "name": "Echosistant Rooms Shortcuts",
+                "iconUrl": "https://raw.githubusercontent.com/BamaRayne/Echosistant/master/smartapps/bamarayne/echosistant.src/app-Echosistant.png",
+                "published": true,
+                "oAuth": false,
+                "version": "4.6",
+                "appSettings": {},
+                "appUrl": "smartapps/echo/echosistant-rooms-shortcuts.src/echosistant-rooms-shortcuts.groovy",
+                "optional": false
+            }
+        ]
+    },
+    "deviceHandlers": []
+}
