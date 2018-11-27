@@ -8,6 +8,7 @@
  
  ************************************ FOR INTERNAL USE ONLY ******************************************************
 
+ *		27 November 2018	Version: 4.6 R.0.0.2	Bug fix in ST token generation and code clean up
  *		23 November 2018 	Version: 4.6 R.0.0.1	Version change and release
  *		26 October 2018		Version: 4.5 R.0.0.2		Re-Release
  *
@@ -38,7 +39,7 @@ definition(
     author			: "JH/BD",
 	description		: "Control and Feedback of your Smart Things Environment via Natural Conversations with Alexa.",
 	category		: "My Apps",
-    singleInstance	: false,
+    singleInstance	: true,
 	iconUrl			: "https://raw.githubusercontent.com/BamaRayne/Echosistant/master/smartapps/bamarayne/echosistant.src/app-Echosistant.png",
 	iconX2Url		: "https://raw.githubusercontent.com/BamaRayne/Echosistant/master/smartapps/bamarayne/echosistant.src/app-Echosistant@2x.png",
 	iconX3Url		: "https://raw.githubusercontent.com/BamaRayne/Echosistant/master/smartapps/bamarayne/echosistant.src/app-Echosistant@2x.png")
@@ -49,7 +50,7 @@ private def textVersion() {
 	def text = "1.0"
 }
 private release() {
-    def text = "Version 4.6, Revision 0.0.1"
+    def text = "Version 4.6, Revision 0.0.2"
 }
 /**********************************************************************************************************************************************/
 preferences {   
@@ -88,6 +89,9 @@ def mainParentPage() {
 page name: "mIntent"
 def mIntent() {
     dynamicPage (name: "mIntent", title: "Settings and Support", install: false, uninstall: false) {
+//        section ("Cross Commands") {
+//        	input "cCmd", "text", title: "What is the name of your primary room?", required: true, defaultValue: House, submitOnChange: true
+//            }
         section ("") {
             href "mSecurity", title: "Smart Home Monitor Status Changes", description: mSecurityD(), state: mSecurityS(),
             image: "https://raw.githubusercontent.com/BamaRayne/Echosistant/master/smartapps/bamarayne/echosistant.src/Echosistant_Rest.png"
@@ -160,14 +164,16 @@ def mSettings(){
         	log.info "The information below is required to be copy and pasted into the AWS Lambda file. \n" +
     				"\n---------------------------------------------------------------------------------------\n" +
                     "\nvar STappID = '${app.id}' \n var STtoken = '${state.accessToken}';\n" +
-                   	"var url= '${apiServerUrl("/api/smartapps/installations/")}' + STappID + '/' ;\n" +
+                   	"\nvar url= '${apiServerUrl("/api/smartapps/installations/")}' + STappID + '/' ;' ;\n" +
+                    //https://graph-na02-useast1.api.smartthings.com:443/api/smartapps/installations/
+                    
                     "\n---------------------------------------------------------------------------------------"
             paragraph "The information below is required to be copy and pasted into the AWS Lambda file. \n" +
                 "------------------------------------------------------------------------------------------------------------------------------------\n" +
                 " var SmartThings Token = '${state.accessToken}' ;\n" +
-                " var url = '${getApiServerUrl()}/${hubUID}/apps/${app.id}/' ;\n" +
+                " var url= '${apiServerUrl("/api/smartapps/installations/")}' + STappID + '/' ;\n" +
                 "------------------------------------------------------------------------------------------------------------------------------------" 
-            href "mTokens", title: "Revoke/Reset Security Access Token"
+            href "mTokens", title: "Revoke/Reset Security Access Token", description: "Tap here to Perform the actions"
         }
         section("Tap below to remove the ${textAppName()} application.  This will remove ALL Profiles and the App from your SmartThings Environment."){
         }	
@@ -188,15 +194,6 @@ def mTokens(){
         def msg = state.accessToken != null ? state.accessToken : "Could not create Access Token. "+
             "OAuth may not be enabled. Go to the SmartApp IDE settings to enable OAuth."
         section ("Reset Access Token / Application ID"){
-            href "mConfirmation", title: "Reset Access Token and Application ID", description: none
-        }
-    }
-} 
-
-page name: "mConfirmation"
-def mConfirmation(){
-    dynamicPage(name: "mConfirmation", title: "Reset/Renew Access Token Confirmation", uninstall: false){
-        section {
             href "mTokenReset", title: "Reset/Renew Access Token", description: "Tap here to confirm action - READ WARNING BELOW"
             paragraph "PLEASE CONFIRM! By resetting the access token you will disable the ability to interface this SmartApp with your Amazon Echo."+
                 "You will need to copy the new access token to your Amazon Lambda code to re-enable access." +
@@ -204,10 +201,10 @@ def mConfirmation(){
         }
         section(" "){
             href "mainParentPage", title: "Cancel And Go Back To Main Menu", description: none 
+        	}
         }
     }
-}
-
+ 
 page name: "mTokenReset"
 def mTokenReset(){
     dynamicPage(name: "mTokenReset", title: "Access Token Reset", uninstall: false){
@@ -217,7 +214,7 @@ def mTokenReset(){
             def msg = state.accessToken != null ? "New access token:\n${state.accessToken}\n\n" : "Could not reset Access Token."+
                 "OAuth may not be enabled. Go to the SmartApp IDE settings to enable OAuth."
             paragraph "${msg}"
-            paragraph "The new access token and app ID are now displayed in the Live Logs tab of the IDE."
+            paragraph "The new access token and app ID are now displayed in the Live Logs tab of the IDE. Tap SAVE/DONE now."
             log.info "New IDs: appID = '${app.id}' , Ttoken = '${state.accessToken}'"
         }
         section(" "){ 
@@ -308,8 +305,6 @@ def initialize() {
             state.lastAction = null
 			state.lastActivity = null
 			state.pendingConfirmation = false
-            unschedule("startLoop")
-            unschedule("continueLoop")
 }
 def getProfileList(){
 		return getChildApps()*.label
@@ -323,6 +318,7 @@ def processBegin(){
     def versionDate = params.versionDate
     def releaseTxt = params.releaseTxt
     def event = params.intentResp
+    state.event = params.intentResp
         state.lambdaReleaseTxt = releaseTxt
         state.lambdaReleaseDt = versionDate
         state.lambdatextVersion = versionTxt
@@ -444,14 +440,14 @@ def getSHMStatus() {
     if (currentSHM == "stay") {
         currentSHM = "Armed-Stay" }
     return currentSHM
-}
-    
+}       
+             
 /************************************************************************************************************
    TEXT TO SPEECH PROCESS - Lambda via page t
 ************************************************************************************************************/
-def processTts() {
+def processTts(tts) {
 		//LAMBDA VARIABLES
-        log.info "received text is: $params.ttstext"
+        log.info "event is $params.event received text is: $params.ttstext"
     	def ptts = params.ttstext 
         def pintentName = params.intentName
         //OTHER VARIABLES
@@ -462,35 +458,22 @@ def processTts() {
         def pPIN = false
         def dataSet = [:]
         if (debug) log.debug "Messaging Profile Data: (ptts) = '${ptts}', (pintentName) = '${pintentName}'"   
-                
-        pContCmdsR = "profile"
-		def tProcess = true
-//try {
-
-	if (ptts == "this is a test"){
-		outputTxt = "Congratulations! EchoSistant is now setup properly" 
-		return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]       
-    }
         
-        if(ptts.contains("no ") || ptts == "no" || ptts == "stop" || ptts == "cancel" || ptts == "kill it" || ptts == "zip it" || ptts == "yes" && state.pContCmdsR != "wrongIntent"){
-        	if(ptts == "no" || ptts == "stop" || ptts == "cancel" || ptts == "kill it" || ptts == "zip it" || ptts.contains("thank")){
-                outputTxt = "ok, I am here if you need me"
-                pContCmds = false
-                return ["outputTxt":outputTxt, "pContCmds":pContCmds, "pShort":state.pShort, "pContCmdsR":pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
-        	}
-			else {
-                outputTxt = "ok, please continue, "
-                pContCmds = false
-                return ["outputTxt":outputTxt, "pContCmds":pContCmds, "pShort":state.pShort, "pContCmdsR":pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
-        	}        
-        }
-  		else{
+/*        pintentName = pintentName.toLowerCase()
+//        if ( !ptts?.contains(state.event)) { pintentName = "$cCmd" }
+		if (state.event != pintentName) { pintentName = "$cCmd" }
+//        if (state.event == pintentName) { 
+        	if (ptts.contains("pintentName")) { child = state.event }
+//        if (ptts != null) {tts = ptts}
+*/   
              childApps.each {child ->
              	if (child.label.toLowerCase() == pintentName.toLowerCase()) { 
                     if (debug) log.debug "Found a profile: '${pintentName}'"
                     pintentName = child.label
                     // recording last message
                     state.lastMessage = ptts
+        //            if (pintentName == state.lastIntent) { pintentName = "$cCmd" }
+        //            log.debug "pintentName = $pintentName"
                     state.lastIntent = pintentName
                     state.lastTime = new Date(now()).format("h:mm aa", location.timeZone)
                     dataSet = [ptts:ptts, pintentName:pintentName, fDevice:fDevice] 
@@ -527,8 +510,8 @@ def processTts() {
             }
             else {
                 if (state.pShort != true){
-                	outputTxt = "Hey, I wish I could help, but EchoSistant couldn't find a Profile named " + pintentName + " or the command may not be supported"
-                }
+                	outputTxt = "I'm sorry, but there seems to be an error, I am unable to $ptts, please try again"
+                    }
                 else {outputTxt = "I've heard " + pintentName + " , but I wasn't able to take any actions "} 
                 pTryAgain = true
                 return ["outputTxt":outputTxt, "pContCmds":pContCmds, "pShort":state.pShort, "pContCmdsR":pContCmdsR, "pTryAgain": pTryAgain, "pPIN":pPIN]
@@ -540,10 +523,11 @@ def processTts() {
 			}
 			else {outputTxt = "I've heard " + pintentName + " , but I wasn't able to take any actions "}         
 			pTryAgain = true
+            pintentName = state.event
 			return ["outputTxt":outputTxt, "pContCmds":pContCmds, "pShort":state.pShort, "pContCmdsR":pContCmdsR, "pTryAgain":pTryAgain, "pPIN":pPIN]              
     	}
+	
 
-} 
 
 /***********************************************************************************************************
 		SMART HOME MONITOR STATUS AND KEYPAD HANDLER
