@@ -38,7 +38,7 @@ definition(
     author			: "JH/BD",
 	description		: "Control and Feedback of your Smart Things Environment via Natural Conversations with Alexa.",
 	category		: "My Apps",
-    singleInstance	: true,
+    singleInstance	: false,
 	iconUrl			: "https://raw.githubusercontent.com/BamaRayne/Echosistant/master/smartapps/bamarayne/echosistant.src/app-Echosistant.png",
 	iconX2Url		: "https://raw.githubusercontent.com/BamaRayne/Echosistant/master/smartapps/bamarayne/echosistant.src/app-Echosistant@2x.png",
 	iconX3Url		: "https://raw.githubusercontent.com/BamaRayne/Echosistant/master/smartapps/bamarayne/echosistant.src/app-Echosistant@2x.png")
