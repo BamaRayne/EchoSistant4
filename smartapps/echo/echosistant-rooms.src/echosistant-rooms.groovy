@@ -1,6 +1,7 @@
 /* 
 * EchoSistant Rooms Profile - EchoSistant Add-on
 *
+*		11/27/2018		Version:4.6 R.0.1.7		Added verbal execution of webcore pistons
 *		11/25/2018		Version:4.6 R.0.1.6		Bug fixes. Additional feedback: Fan speeds, Dimmer levels
 *		11/25/2018		Version:4.6 R.0.1.5		Bug fix for individual lights feedback
 *		11/24/2018		Version:4.6 R.0.1.4		Completed code for compound devices and compound groups commands
@@ -37,7 +38,6 @@ import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 import java.security.InvalidKeyException
 import java.security.MessageDigest
-
 include 'asynchttp_v1'
 
 
@@ -56,7 +56,7 @@ private release() {
 	def text = "R.0.4.6"
 }
 private revision(text) {
-	text = "Version 4.6, Revision 0.1.6"
+	text = "Version 4.6, Revision 0.1.7"
     return text
     }
 /**********************************************************************************************************************************************/
@@ -102,7 +102,6 @@ def mainProfilePage() {
         }
 	}
 }
-
 
 // OUTPUT MESSAGES HOME PAGE
 page name: "messaging"
@@ -153,6 +152,12 @@ def feedback(){
             href "pActions", title: "Location and Profile Actions (to execute when Profile runs)", description: pActionsComplete(), state: pActionsSettings(),
             image: "https://raw.githubusercontent.com/BamaRayne/SmartSuite/master/Icons/Action.png"
         }        
+        section ("Run actions for this webCoRE Piston") {
+            if(actionType != "Triggered Report") {
+                input "myPiston", "enum", title: "Choose Piston...", options:  parent.webCoRE_list('name'), multiple: false, required: false,
+                image: "https://cdn.rawgit.com/ady624/${webCoRE_handle()}/master/resources/icons/app-CoRE.png"
+            }
+        }
     }
 }
 
@@ -632,6 +637,16 @@ def certainTime() {
 /************************************************************************************************************
 **** HANDLERS FOLLOW
 ************************************************************************************************************/
+
+
+//NEW webCoRE Integration
+private webCoRE_handle(){return'webCoRE'}
+private webCoRE_init(pistonExecutedCbk){state.webCoRE=(state.webCoRE instanceof Map?state.webCoRE:[:])+(pistonExecutedCbk?[cbk:pistonExecutedCbk]:[:]);subscribe(location,"${webCoRE_handle()}.pistonList",webCoRE_handler);if(pistonExecutedCbk)subscribe(location,"${webCoRE_handle()}.pistonExecuted",webCoRE_handler);webCoRE_poll();}
+private webCoRE_poll(){sendLocationEvent([name: webCoRE_handle(),value:'poll',isStateChange:true,displayed:false])}
+public  webCoRE_execute(pistonIdOrName,Map data=[:]){def i=(state.webCoRE?.pistons?:[]).find{(it.name==pistonIdOrName)||(it.id==pistonIdOrName)}?.id;if(i){sendLocationEvent([name:i,value:app.label,isStateChange:true,displayed:false,data:data])}}
+public  webCoRE_list(mode){def p=state.webCoRE?.pistons;if(p)p.collect{mode=='id'?it.id:(mode=='name'?it.name:[id:it.id,name:it.name])}}
+public  webCoRE_handler(evt){switch(evt.value){case 'pistonList':List p=state.webCoRE?.pistons?:[];Map d=evt.jsonData?:[:];if(d.id&&d.pistons&&(d.pistons instanceof List)){p.removeAll{it.iid==d.id};p+=d.pistons.collect{[iid:d.id]+it}.sort{it.name};state.webCoRE = [updated:now(),pistons:p];};break;case 'pistonExecuted':def cbk=state.webCoRE?.cbk;if(cbk&&evt.jsonData)"$cbk"(evt.jsonData);break;}}
+
 
 // VIRTUAL PERSON CREATE HANDLER
 def virtualPerson() {
@@ -1329,6 +1344,16 @@ def profileEvaluate(params) {
     return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
 }    */
         
+// EXECUTE WEBCORE PISTONS
+	if (tts.contains("execute piston") || tts.contains("run piston")) {
+		if (myPiston) {
+    	log.warn "executing piston name = $myPiston"
+		webCoRE_execute(myPiston)
+	    outputTxt = "ok, I have executed the piston, $myPiston"
+        return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
+	}
+}    
+		
 // CANCEL ALL SCHEDULED TIMERS/DELAYS
 	if (tts.contains("cancel the delay") || tts.contains("cancel the timer")) {
     	unschedule(resetTts)
@@ -2210,7 +2235,8 @@ log.info "ttsactions have been called by: $tts"
     def String ttx = (String) null 	
     def String = tts
 	
-    //define audio message
+
+	//define audio message
     if(pRunMsg){
     	tts = settings.pRunMsg
     }
