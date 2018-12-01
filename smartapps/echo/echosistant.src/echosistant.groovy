@@ -97,6 +97,9 @@ def mIntent() {
 //        section ("Cross Commands") {
 //        	input "cCmd", "text", title: "What is the name of your primary room?", required: true, defaultValue: House, submitOnChange: true
 //            }
+        section() {
+    		href url: getAppEndpointUrl("renderAwsCopyText"), style:"embedded", title:"View the Data shared with Developer", description: "Tap to view Data", required:false
+			}
         section ("") {
             href "mSecurity", title: "Smart Home Monitor Status Changes", description: mSecurityD(), state: mSecurityS(),
             image: "https://raw.githubusercontent.com/BamaRayne/Echosistant/master/smartapps/bamarayne/echosistant.src/Echosistant_Rest.png"
@@ -267,6 +270,7 @@ def OAuthToken(){
 mappings {
     path("/b") { action: [GET: "processBegin"]}
 	path("/t") { action: [GET: "processTts"] }
+    path("/renderAwsCopyText") { action: [GET: "renderAwsCopyText"] }
 }
 
 /************************************************************************************************************
@@ -311,6 +315,17 @@ def initialize() {
 def getProfileList(){
 		return getChildApps()*.label
 }
+
+/************************************************************************************************************
+	 	HTML PAGE FOR VERSIONS
+************************************************************************************************************/
+def renderAwsCopyText() {
+    try {
+        String str = "Parent Version: " + release() + " Child App Version: " + child?.revision(text)
+        render contentType: "text/plain", data: str
+    } catch (ex) { log.error "renderAwsCopyText Exception:", ex }
+}
+String getAppEndpointUrl(subPath)   { return "${apiServerUrl("/api/smartapps/installations/${app.id}${subPath ? "/${subPath}" : ""}?access_token=${state.accessToken}")}" }
 
 /************************************************************************************************************
 		Begining Process - Lambda via page b

@@ -1,6 +1,7 @@
 /* 
 * EchoSistant Rooms Profile - EchoSistant Add-on
 *
+*		12/01/2018		Version:4.6 R.0.1.8a	Bug fix for setting the SHM by saying turn on the alarm
 *		12/01/2018		Version:4.6 R.0.1.8		Bug fix for feedback of devices
 *		11/27/2018		Version:4.6 R.0.1.7		Added verbal execution of webcore pistons
 *		11/25/2018		Version:4.6 R.0.1.6		Bug fixes. Additional feedback: Fan speeds, Dimmer levels
@@ -57,7 +58,7 @@ private release() {
 	def text = "R.0.4.6"
 }
 private revision(text) {
-	text = "Version 4.6, Revision 0.1.8"
+	text = "Version 4.6, Revision 0.1.8a"
     return text
     }
 /**********************************************************************************************************************************************/
@@ -970,7 +971,7 @@ def profileFeedbackEvaluate(params) {
                     	}    
                     	else {outputTxt = "There are no ${fName}'s " + fCommand + " in the ${app.label} " 
                         }
-                    log.debug "Misc Devices Return: $outputTxt"
+              //      log.debug "Misc Devices Return: $outputTxt"
                     return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
                 }
             // RETURNS A LIST OF DEVICES //        
@@ -1024,7 +1025,7 @@ def profileFeedbackEvaluate(params) {
                 }
                 if (tts.contains("$lMatch")) {
                     def fLightsStatus = s?.latestValue("switch")
-                    log.debug "light status is: $fLightsStatus"
+                 //   log.debug "light status is: $fLightsStatus"
                     if (tts.contains("on")) {
                         if (fLightsStatus == "on") {
                             outputTxt = "Yes, the $lMatch is $fLightsStatus"
@@ -1076,7 +1077,7 @@ def profileFeedbackEvaluate(params) {
                 def cMatch = c.label.toLowerCase()
                 if (tts.contains("$cMatch")) {
                     def fWindowsStatus = c?.latestValue("contact")
-                    log.info "fWindowsStatus is: $fWindowsStatus"
+                  //  log.info "fWindowsStatus is: $fWindowsStatus"
                     if (tts.contains("open")) {
                         if (fWindowsStatus == "open") {
                             outputTxt = "Yes, the $cMatch is $fWindowsStatus"
@@ -1550,7 +1551,7 @@ def compoundCmd(newTts1, newTts2, switchList, params) {
     def m2 = null
     switchList?.each { m -> 
         def mMatch = m.label.toLowerCase()
-        log.info "mMatch is: $mMatch"
+    //    log.info "mMatch is: $mMatch"
 
         if(newTts1.contains("${mMatch}")) {
             if (newTts1.contains("turn on")) {
@@ -1684,7 +1685,7 @@ def singleCmd(newTts1, newTts2, switchList, params) {
             	if(newTts1.contains("TV")) {
                 	mMatch = mMatch.toUpperCase()
                     }
-            log.info "mMatch is: $mMatch"
+    //        log.info "mMatch is: $mMatch"
             if(newTts1.contains("${mMatch}")) {
                 if (newTts1.contains("turn on")) {
                     m.on()
@@ -1704,6 +1705,7 @@ def singleCmd(newTts1, newTts2, switchList, params) {
             return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]    
         }    
         if(!newTts1.contains("${mMatch}")) {
+        	if(tts.contains("alarm")) deviceType = "security"
             if(tts.contains("on"))  command = "on" 
             if(tts.contains("off"))  command = "off"
             if(tts.contains("$gCustom1N".toLowerCase())) deviceType = "light1"
@@ -2007,6 +2009,10 @@ def groupCmd(params) {
         }
         return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]				
     }
+    if (tts.contains("alarm")) {
+    	if(tts.contains("alarm")) deviceType = "security"
+        advCtrlHandler(data,tts)
+        }
     if (parent.debug) {log.debug "end of control engine, command=${command}, deviceType = ${deviceType}"}
     if (!sonosDevice && !synthDevice) { //added 2/19/17 Bobby  
         state.lastMessage = tts
@@ -2136,11 +2142,17 @@ def advCtrlHandler(data, tts) {
             if (newLevel == "cHigh" || newLevel == "cMedium" || newLevel == "cLow") {
                 result = "Ok, I am now adjusting the fans in the  " + app.label 
                 deviceD.setLevel(newLevel) }
-
-        }
+				}
         log.debug "Fans group activated: newLevel = $newLevel and deviceD = $deviceD"
         result = "Ok, I am now adjusting the fans in the  " + app.label 
         return result
+    }
+    if (deviceType == "security") {
+    if (tts.contains("turn on the alarm") || tts.contains("turn off the alarm")) {
+        outputTxt = securityHandler(tts)
+        log.info "the result returned was: $outputTxt"
+        return outputTxt //["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
+    	}
     }
 }
 
@@ -2155,7 +2167,7 @@ def ttsHandler() {
     log.debug " ttshandler settings: pAlexaCustResp=${pAlexaCustResp},pAlexaRepeat=${pAlexaRepeat},tts=${tts}"
 
     // SHORTCUT PHRASES AND RESPONSES PROCESSING
-    def rp = childApps?.find {r -> r?.label?.toLowerCase() == tts?.toLowerCase()}
+/*    def rp = childApps?.find {r -> r?.label?.toLowerCase() == tts?.toLowerCase()}
     if (rp) {
     log.debug "found a report: $rp.label"
     def eTxt = "The window report is running"
@@ -2165,7 +2177,7 @@ def ttsHandler() {
      //   }
      //   else {outputTxt = "I'm executing the report for the room, " + rp}
         return //outputTxt
-    }
+    }*/
     def sc = childApps?.find {s -> s?.label?.toLowerCase() == tts?.toLowerCase()}
     if (sc) {
         sc?.runShortcutAction()
@@ -2212,13 +2224,13 @@ def ttsHandler() {
     log.debug "Message received from Parent with: (tts) = '${tts}', (intent) = '${intent}', (childName) = '${childName}', current app version: ${release()}"  
 
     if (test){
-        outputTxt = "Congratulations! You have successfully completed the installation of EchoSistant" 
+        outputTxt = "Salutations and Congratulations! You have successfully completed the installation of EchoSistant" 
         return outputTxt //["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN] 
     }
     if (tts.contains("turn on the alarm") || tts.contains("turn off the alarm")) {
         outputTxt = securityHandler(tts)
         log.info "the result returned was: $outputTxt"
-        return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
+        return outputTxt //["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
     }
     if (tts?.contains("do not disturb")) {
         log.info "setting DnD start"
