@@ -1,6 +1,7 @@
 /* 
 * EchoSistant Rooms Profile - EchoSistant Add-on
 *
+*		12/01/2018		Version:4.6 R.0.1.8b	Bug fix in motion detection feedback
 *		12/01/2018		Version:4.6 R.0.1.8a	Bug fix for setting the SHM by saying turn on the alarm
 *		12/01/2018		Version:4.6 R.0.1.8		Bug fix for feedback of devices
 *		11/27/2018		Version:4.6 R.0.1.7		Added verbal execution of webcore pistons
@@ -58,7 +59,7 @@ private release() {
 	def text = "R.0.4.6"
 }
 private revision(text) {
-	text = "Version 4.6, Revision 0.1.8a"
+	text = "Version 4.6, Revision 0.1.8b"
     return text
     }
 /**********************************************************************************************************************************************/
@@ -849,10 +850,6 @@ def profileFeedbackEvaluate(params) {
         return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
     }    
     if (intent == childName){
-        if (test){
-            outputTxt = "Congratulations! Your EchoSistant is now setup properly, good job" 
-            return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
-        }
 
         if (tts.contains("current revision") || tts.contains("current version")) {
             def roomsRev = revision(text)
@@ -971,7 +968,6 @@ def profileFeedbackEvaluate(params) {
                     	}    
                     	else {outputTxt = "There are no ${fName}'s " + fCommand + " in the ${app.label} " 
                         }
-              //      log.debug "Misc Devices Return: $outputTxt"
                     return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
                 }
             // RETURNS A LIST OF DEVICES //        
@@ -994,7 +990,6 @@ def profileFeedbackEvaluate(params) {
             }
         }
     }
-//}
 
 	// DIMMERS/LIGHTS INDIVIDUAL LEVELS //
         if  (((tts.contains("how bright is") || tts.contains("what level is the") || tts.contains("what is the"))) && (tts.contains("fan") || tts.contains("light") || tts.contains("lamp"))) {
@@ -1176,48 +1171,42 @@ def profileFeedbackEvaluate(params) {
             }                            
         }		
 
-        /// CHECK FOR MOTION
-        if (tts.contains("motion") || tts=="is there" || tts=="is anyone" || tts=="is there anyone" || tts=="is something moving" || tts=="is someone" || tts=="is there someone") {
+    /// CHECK FOR MOTION
+        if (tts.contains("check") || tts.contains("motion") || tts=="is there" || tts=="is anyone" || tts=="is there anyone" || tts=="is something moving" || tts=="is someone" || tts=="is there someone") {
+            if (parent.debug) log.debug "Checking for motion"
             if (fMotion == null) {
                 outputTxt = "There are no sensors selected for me to determine if there is motion in the ${app.label}"
                 return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
             }
-        }
-        if(tts.contains("check the status") || tts.contains("motion") || tts=="is there" || tts=="is anyone" || tts=="is there anyone" || tts=="is something moving" || tts=="is someone" || tts=="is there someone") { 
             if(fMotion != null) {
                 def devListMotion = []
                 def devStatus
-                fMotion.find { deviceName ->
-                    if (deviceName.latestValue("occupancy")=="occupied" || deviceName.latestValue("occupancy")=="vacant" || deviceName.latestValue("occupancy")=="locked" || deviceName.latestValue("occupancy")=="checking") {
-                        devStatus = deviceName.latestValue("occupancy")
+
+                fMotion.each { deviceName ->
+                    if (deviceName.latestValue("motion")=="active") {
                         String device = (String) deviceName
                         devListMotion += device
-                        if (tts.contains("check")) { 
-                            outputTxt = "The $app.label is currently $devStatus" //There is activity in the $app.label"
-                            return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN] 
-                        }
-                        outputTxt = "Yes, the $app.label is currently $devStatus" //there is activity in the ${app.label}" 
-                        return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN] 
                     }
-                    else if (deviceName.latestValue("motion")=="active") {
-                        String device = (String) deviceName
-                        devListMotion += device
-                        if (tts.contains("check")) { 
-                            outputTxt = "There is activity in the $app.label"
-                            return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN] 
-                        }
-                        outputTxt = "Yes, there is activity in the ${app.label}" 
+                }
+                if (devListMotion.size() > 0) {
+                    if (parent.debug) log.debug "devListMotionSize = $devListMotion.size"
+                    if (tts.contains("check")) { 
+                        outputTxt = "There is activity in the $app.label"
                         return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN] 
                     }
                     else {
-                        outputTxt = "I am not detecting any activity in the ${app.label}"
+                        outputTxt = "Yes, there is activity in the ${app.label}" 
                         return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN] 
                     }
                 }
+                else { 
+                    outputTxt = "I am not detecting any activity in the ${app.label}"
+                    if (parent.debug) log.debug "No motion detected"
+                    return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN] 
+                }
             }
             return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN] 
-        }   
-
+        }
 
 
 
