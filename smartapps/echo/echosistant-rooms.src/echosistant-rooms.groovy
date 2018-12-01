@@ -1,6 +1,7 @@
 /* 
 * EchoSistant Rooms Profile - EchoSistant Add-on
 *
+*		12/01/2018		Version:4.6 R.0.1.8		Bug fix for feedback of devices
 *		11/27/2018		Version:4.6 R.0.1.7		Added verbal execution of webcore pistons
 *		11/25/2018		Version:4.6 R.0.1.6		Bug fixes. Additional feedback: Fan speeds, Dimmer levels
 *		11/25/2018		Version:4.6 R.0.1.5		Bug fix for individual lights feedback
@@ -56,7 +57,7 @@ private release() {
 	def text = "R.0.4.6"
 }
 private revision(text) {
-	text = "Version 4.6, Revision 0.1.7"
+	text = "Version 4.6, Revision 0.1.8"
     return text
     }
 /**********************************************************************************************************************************************/
@@ -71,6 +72,7 @@ preferences {
     page name: "pPerson"
     page name: "pVirPerAction"
   	page name: "renamePage"
+    page name: "reports"
 }
 
 // MAIN PROFILE - HOME PAGE
@@ -92,7 +94,10 @@ def mainProfilePage() {
             href "Shortcuts", title: "Shortcuts", description: mRoomsD(), state: mRoomsS(),
             image: "https://raw.githubusercontent.com/BamaRayne/SmartSuite/master/Icons/shortcut.png"
             }
-		section ("") {
+//		section("") {
+//        	href "Reports", title: "Reminders & Reports"
+//            }
+        section ("") {
             href "pTrackers", title: "Task Trackers", description: pTrackComplete(), state: pTrackSettings(),
             image: "https://raw.githubusercontent.com/BamaRayne/SmartSuite/master/Icons/Taskers.png"
         }
@@ -118,7 +123,7 @@ def messaging(){
     }
 }
 
-// SHORTCUT PHRASES
+// SHORTCUTS 
 page name: "Shortcuts"
 def Shortcuts(){
 	dynamicPage(name: "Shortcuts", title: "Create shortcut phrases and custom Alexa responses", uninstall: false){
@@ -136,27 +141,43 @@ def Shortcuts(){
     }
 }     
 
+// REMINDERS AND REPORTS 
+/*page name: "Reports"
+def Reports(){
+	dynamicPage(name: "Reports", title: "Create Reminders and Reports", uninstall: false){
+		if (childApps?.size()>0) {
+			section("",  uninstall: false){
+            app(name: "EchoSistant Room Reports", appName: "EchoSistant Room Reports", namespace: "Echo", title: "Create a New Report", displayChildApps: false, multiple: true,  uninstall: false)
+            }
+        }
+        else {
+            section("",  uninstall: false){
+                paragraph "NOTE: Looks like you haven't created any Rooms yet.\n \nPlease make sure you have installed the EchoSistant Reminders Add-on before creating a new Profile!"
+                app(name: "EchoSistant Room Reports", appName: "EchoSistant Room Reports", namespace: "Echo", title: "Create a New Report", multiple: true,  uninstall: false)
+            }
+		}
+    }
+}     */
+
 // FEEDBACK CONFIGURATION HOME PAGE
 page name: "feedback"
 def feedback(){
     dynamicPage(name: "feedback", title: "Device Groups Control and Feedback Configuration", uninstall: false){  
         section("") {
-            href "pGroups", title: "Individual Devices & Device Groups Control", description: pGroupComplete(), state: pGroupSettings(),
+            href "pGroups", title: "System Control", description: pGroupComplete(), state: pGroupSettings(),
             image: "https://raw.githubusercontent.com/BamaRayne/SmartSuite/master/Icons/control panel.ico"
         }
         section("") {    
-        	href "fDevices", title: "Individual Devices Feedback", description: fDeviceComplete(), state: fDeviceSettings(),
+        	href "fDevices", title: "System Feedback", description: fDeviceComplete(), state: fDeviceSettings(),
             image: "https://raw.githubusercontent.com/BamaRayne/SmartSuite/master/Icons/Feedback.png"
         }
         section("") {    
             href "pActions", title: "Location and Profile Actions (to execute when Profile runs)", description: pActionsComplete(), state: pActionsSettings(),
             image: "https://raw.githubusercontent.com/BamaRayne/SmartSuite/master/Icons/Action.png"
         }        
-        section ("Run actions for this webCoRE Piston") {
-            if(actionType != "Triggered Report") {
+        section ("Run the actions for this webCoRE Piston") {
                 input "myPiston", "enum", title: "Choose Piston...", options:  parent.webCoRE_list('name'), multiple: false, required: false,
                 image: "https://cdn.rawgit.com/ady624/${webCoRE_handle()}/master/resources/icons/app-CoRE.png"
-            }
         }
     }
 }
@@ -638,7 +659,6 @@ def certainTime() {
 **** HANDLERS FOLLOW
 ************************************************************************************************************/
 
-
 //NEW webCoRE Integration
 private webCoRE_handle(){return'webCoRE'}
 private webCoRE_init(pistonExecutedCbk){state.webCoRE=(state.webCoRE instanceof Map?state.webCoRE:[:])+(pistonExecutedCbk?[cbk:pistonExecutedCbk]:[:]);subscribe(location,"${webCoRE_handle()}.pistonList",webCoRE_handler);if(pistonExecutedCbk)subscribe(location,"${webCoRE_handle()}.pistonExecuted",webCoRE_handler);webCoRE_poll();}
@@ -939,28 +959,44 @@ def profileFeedbackEvaluate(params) {
                     return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
                 }
             // MISC DEVICES RETURNS A YES OR NO //
-                if (tts.startsWith("are") || tts.startsWith("how")|| tts.startsWith("check")) {
-                    if (devList.size() > 0) {
-                        if (devList.size() == 1) { outputTxt = "There is one $fName " + fCommand + " in the ${app.label} " }
-                        else { outputTxt = "There are " + devList.size() + " " + fName + " 's " + fCommand + " in the ${app.label} " }}    
-                    else (outputTxt = "There are no ${fName}'s " + fCommand + " in the ${app.label} " )
+                if (tts.startsWith("are") || tts.startsWith("how many")|| tts.startsWith("check")) {
+                    if (devList.size() >= 1) {
+                    	if (devList.size() == 1) {
+                        	outputTxt = "There is one $fName " + fCommand + " in the ${app.label} " 
+                            }
+                        	else { 
+                        		outputTxt = "There are " + devList.size() + " " + fName + "'s " + fCommand + " in the ${app.label} " 
+                        	}
+                    	}    
+                    	else {outputTxt = "There are no ${fName}'s " + fCommand + " in the ${app.label} " 
+                        }
+                    log.debug "Misc Devices Return: $outputTxt"
                     return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
                 }
             // RETURNS A LIST OF DEVICES //        
                 if (tts.startsWith("what") || tts.startsWith("which")) {
                     if (devList.size() > 0) { 
-                        if (devList.size() == 1) {  outputTxt = "The" + devList + " is the only " + fName + " " + fCommand +  " in the ${app.label} " }
-                        else {outputTxt = "The following $fName's are $fCommand in the $app.label $devList" }}
-                    else (outputTxt = "There are no $fName's $fCommand in the $app.label" )   
+                        if (devList.size() == 1) {
+                        	outputTxt = "The" + devList + " is the only " + fName + " " + fCommand +  " in the ${app.label} "
+                            }
+                        	else 
+                            	{
+                                outputTxt = "The following $fName's are $fCommand in the $app.label $devList" 
+                                }
+                            }
+                    		else {
+                            	outputTxt = "There are no $fName's $fCommand in the $app.label" 
+                                }
+                    log.debug "Returns a list of devices outputTxt = $outputTxt"
                     return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
                 }
             }
         }
     }
-}
+//}
 
 	// DIMMERS/LIGHTS INDIVIDUAL LEVELS //
-        if  ((tts.contains("how bright is") || tts.contains("what level is the") || tts.contains("what is the")) && tts.contains("light")) {
+        if  (((tts.contains("how bright is") || tts.contains("what level is the") || tts.contains("what is the"))) && (tts.contains("fan") || tts.contains("light") || tts.contains("lamp"))) {
             log.debug "Looking for a dimmer level"
             fSwitches?.each { d -> 
                 def dMatch = d.label.toLowerCase()
@@ -976,11 +1012,13 @@ def profileFeedbackEvaluate(params) {
             return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
         }    
 
-    // LIGHTS & TV INDIVIDUAL FEEDBACK - ON AND OFF STATUS
-        if ((tts.contains("fan") || tts.contains("TV") || tts.contains("light") || tts.contains("automations")) && (tts.contains("on") || tts.contains("off"))) {
+    // LIGHTS, FANS, & TV INDIVIDUAL FEEDBACK - ON AND OFF STATUS
+//        if ((tts.contains("window") || tts.contains("fan") || tts.contains("TV") || tts.contains("light") || tts.contains("lamp") || tts.contains("automations")) && (tts.contains("open") || tts.contains("closed") || tts.contains("on") || tts.contains("off"))) {
+        if ((tts.contains("fan") || tts.contains("TV") || tts.contains("light") || tts.contains("lamp") || tts.contains("automations")) && (tts.contains("on") || tts.contains("off"))) {
         log.debug "Checking to see if a light, fan, or TV is on or off"
             fSwitches.each { s ->
                 def lMatch = s.label.toLowerCase()
+                log.debug "the matched device, lMatch is: $lMatch"
                 if(tts.contains("TV")) {
                     lMatch = lMatch.toUpperCase()
                 }
@@ -1031,7 +1069,36 @@ def profileFeedbackEvaluate(params) {
             return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]		
         } 
         
-    // DOORS INDIVIDUAL FEEDBACK - OPEN AND CLOSED
+    // WINDOWS INDIVIDUAL FEEDBACK - OPEN AND CLOSED
+        if (tts.contains("window") && (tts.contains("open") || tts.contains("closed"))) {
+        log.debug "Looking for a window"
+            fWindows.each { c ->
+                def cMatch = c.label.toLowerCase()
+                if (tts.contains("$cMatch")) {
+                    def fWindowsStatus = c?.latestValue("contact")
+                    log.info "fWindowsStatus is: $fWindowsStatus"
+                    if (tts.contains("open")) {
+                        if (fWindowsStatus == "open") {
+                            outputTxt = "Yes, the $cMatch is $fWindowsStatus"
+                        }
+                        if (fWindowsStatus == "closed") {
+                            outputTxt = "No, the $cMatch is $fWindowsStatus"
+                        }
+                    }
+                    if (tts.contains("closed")) {    
+                        if (fWindowsStatus == "closed") {
+                            outputTxt = "Yes, the $cMatch is $fWindowsStatus"
+                        }
+                        if (fWindowsStatus == "open") {
+                            outputTxt = "No, the $cMatch is $fWindowsStatus"
+                        }
+                    }
+                }
+            }    
+            return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]		
+        }
+        
+        // DOORS INDIVIDUAL FEEDBACK - OPEN AND CLOSED
         if (tts.contains("door") && (tts.contains("open") || tts.contains("closed"))) {
         log.debug "Looking for a door"
             fDoors.each { c ->
@@ -1156,7 +1223,7 @@ def profileFeedbackEvaluate(params) {
 
 
         // POWER CONSUMPTION AEON SWITCHES
-        /*            	if (tts.contains("how much power") || tts.contains("power usage")) {
+ /*                   	if (tts.contains("how much power") || tts.contains("power usage")) {
                 def result 
                 def devList = []
                 def currWatts = []
@@ -1194,6 +1261,24 @@ def profileFeedbackEvaluate(params) {
             }*/
 
 
+        // LIST DEVICES THAT ARE USING POWER    
+        if (tts.contains("what devices") && tts.contains("power")) {
+            if (fPower) {
+            def devList = []
+                fPower?.each { deviceName ->
+                String device = (String) deviceName
+                    devList += device
+                    }
+                ofPower?.each { deviceName ->
+                String device = (String) deviceName
+                    devList += device
+					}
+                outputTxt = "The following devices are using power in the $app.label, $devList"    
+                }
+                return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
+				}
+                
+            
         // POWER CONSUMPTION IRIS SMART PLUGS
         if (tts.contains("how much power") || tts.contains("power usage")) {
             def result 
@@ -1231,7 +1316,7 @@ def profileFeedbackEvaluate(params) {
         }
 
     // NETATMO WEATHER STATION HANDLER FOR FEEDBACK
-    if (NetatmoTrue) {
+//    if (NetatmoTrue) {
         log.info "Netatmo Weather Station called"
         def WindMaxTime = fWind?.currentValue("date_max_wind_str")
         def WindMax = fWind?.currentValue("max_wind_str")
@@ -1280,7 +1365,7 @@ def profileFeedbackEvaluate(params) {
         log.info "outputTxt = $outputTxt"        
         return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]	
 
-    }            
+//    }            
     //  TASK TRACKER FEEDBACK
     if (tts.startsWith("was") || tts.startsWith("has") || tts.startsWith("when") || tts.startsWith("did") || tts.startsWith("what")) {
         if (tts.contains("she") || tts.contains("he") || tts.contains("has") || tts.contains("was") || tts.contains("were") || tts.contains("did") || tts.contains("it")) {
@@ -1304,6 +1389,7 @@ def profileFeedbackEvaluate(params) {
         outputTxt = "Sorry, you must first set up your profile before trying to execute it."
         pTryAgain = true
         return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
+    	}
     }
 }
 
@@ -1348,8 +1434,8 @@ def profileEvaluate(params) {
 	if (tts.contains("execute piston") || tts.contains("run piston")) {
 		if (myPiston) {
     	log.warn "executing piston name = $myPiston"
-		webCoRE_execute(myPiston)
-	    outputTxt = "ok, I have executed the piston, $myPiston"
+        webCoRE_execute(myPiston)
+		outputTxt = "ok, I have executed the piston, $myPiston"
         return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
 	}
 }    
@@ -1712,6 +1798,23 @@ def groupCmd(params) {
     if (command != null && deviceType != null && command != "undefined" ) {
 
 
+        //FANS CONTROL
+        if (deviceType == "fan"){
+            if (gFans?.size()>0) {
+                if (command == "on" || command == "off") {
+                    gFans?."${command}"()
+                    outputTxt = "Ok, turning the fan " + command
+                    return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
+                }
+                else if (command == "decrease" || command == "increase" || command == "high" || command == "medium" || command == "low"){
+                    def data =  ["command": command, "deviceType": deviceType]
+                    outputTxt = advCtrlHandler(data, tts)
+                    return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
+                }
+                return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
+            }     
+        } 
+        
         //LIGHT SWITCHES && CUSTOM GROUPS
         if (deviceType == "light" || deviceType == "light1" || deviceType == "light2" || deviceType == "light3" || deviceType == "light4" || deviceType == "light5"){
             if (command == "decrease") {
@@ -1721,7 +1824,7 @@ def groupCmd(params) {
             }
         }
         else if (command == "decrease" || command == "increase" || command == "high" || command == "medium" || command == "low"){
-            data =  ["command": command, "deviceType": deviceType]
+            def data =  ["command": command, "deviceType": deviceType]
             outputTxt = advCtrlHandler(data, tts)
             return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
         }
@@ -1757,7 +1860,7 @@ def groupCmd(params) {
             }
         }
         //FANS CONTROL
-        if (deviceType == "fan"){
+/*        if (deviceType == "fan"){
             if (gFans?.size()>0) {
                 if (command == "on" || command == "off") {
                     gFans?."${command}"()
@@ -1771,7 +1874,7 @@ def groupCmd(params) {
                 }
                 return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
             }     
-        } 
+        } */
         //TASK TRACKER CONTROL
         if (deviceType == "trackerNotification") {
             if (command == "${trackerOne1}".toLowerCase() || command == "${trackerTwo1}".toLowerCase() || command == "${trackerThree1}".toLowerCase() || command == "${trackerFour1}".toLowerCase()) {
@@ -2031,7 +2134,7 @@ def advCtrlHandler(data, tts) {
                 deviceD."$newLevel"()
                 return result}
             if (newLevel == "cHigh" || newLevel == "cMedium" || newLevel == "cLow") {
-                result = "Ok, I am adjusting the fans in the  " + app.label 
+                result = "Ok, I am now adjusting the fans in the  " + app.label 
                 deviceD.setLevel(newLevel) }
 
         }
@@ -2052,6 +2155,17 @@ def ttsHandler() {
     log.debug " ttshandler settings: pAlexaCustResp=${pAlexaCustResp},pAlexaRepeat=${pAlexaRepeat},tts=${tts}"
 
     // SHORTCUT PHRASES AND RESPONSES PROCESSING
+    def rp = childApps?.find {r -> r?.label?.toLowerCase() == tts?.toLowerCase()}
+    if (rp) {
+    log.debug "found a report: $rp.label"
+    def eTxt = "The window report is running"
+    rp?.takeAction(eTxt)
+     //   if (rp.scResponse) {
+         //   outputTxt = result
+     //   }
+     //   else {outputTxt = "I'm executing the report for the room, " + rp}
+        return //outputTxt
+    }
     def sc = childApps?.find {s -> s?.label?.toLowerCase() == tts?.toLowerCase()}
     if (sc) {
         sc?.runShortcutAction()
@@ -4196,4 +4310,11 @@ private hhmmssZ4(time, fmt = "HH:mm:ss.SSSZ") {
     def f = new java.text.SimpleDateFormat(fmt)
     f.setTimeZone(location.timeZone ?: timeZone(time))
     f.format(t)
+}
+
+
+def listEchoSistantProfiles() {
+log.warn "child requesting esProfiles"
+	return state.esProfiles = state.esProfiles ? state.esProfiles : []
+//	return state.lrBlockz = state.lrBlockz ? state.lrBlockz : []
 }

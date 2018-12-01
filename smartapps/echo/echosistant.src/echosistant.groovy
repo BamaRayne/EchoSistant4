@@ -79,6 +79,10 @@ def mainParentPage() {
             href "mIntent", title: "Configure System Settings", description: mIntentD(), state: mIntentS(), 
             image: "https://raw.githubusercontent.com/BamaRayne/Echosistant/master/smartapps/bamarayne/echosistant.src/Echosistant_Config.png"
         }
+        section("Donations:") {
+             href url: textDonateLink(), style:"external", required: false, title:"Donations", description:"Tap to open browser",
+             image: "https://raw.githubusercontent.com/BamaRayne/SmartSuite/master/Icons/Donate.png"
+        }
         section ("") {    
             paragraph "The Current Mode is: ${location.currentMode}"
             paragraph "Smart Home Monitor is set to: " + getSHMStatus() 
@@ -99,10 +103,6 @@ def mIntent() {
         section ("") {
             href "mSupport", title: "Install and Support Information", description: mSupportD(), state: mSupportS(),
             image: "https://raw.githubusercontent.com/BamaRayne/Echosistant/master/smartapps/bamarayne/echosistant.src/Echosistant_About.png"
-        }
-        section("Donations:") {
-             href url: textDonateLink(), style:"external", required: false, title:"Donations", description:"Tap to open browser",
-             image: "https://raw.githubusercontent.com/BamaRayne/SmartSuite/master/Icons/Donate.png"
         }
     }
 }
@@ -165,7 +165,7 @@ def mSettings(){
     				"\n---------------------------------------------------------------------------------------\n" +
                     "\nvar STappID = '${app.id}' \n var STtoken = '${state.accessToken}';\n" +
                    	"\nvar url= '${apiServerUrl("/api/smartapps/installations/")}' + STappID + '/' ;' ;\n" +
-                    //https://graph-na02-useast1.api.smartthings.com:443/api/smartapps/installations/
+                    //var url= 'https://graph-na02-useast1.api.smartthings.com:443/api/smartapps/installations/")}' + STappID + '/' ;' ;\n" +
                     
                     "\n---------------------------------------------------------------------------------------"
             paragraph "The information below is required to be copy and pasted into the AWS Lambda file. \n" +
@@ -482,8 +482,6 @@ def processTts(tts) {
                     pintentName = child.label
                     // recording last message
                     state.lastMessage = ptts
-        //            if (pintentName == state.lastIntent) { pintentName = "$cCmd" }
-        //            log.debug "pintentName = $pintentName"
                     state.lastIntent = pintentName
                     state.lastTime = new Date(now()).format("h:mm aa", location.timeZone)
                     dataSet = [ptts:ptts, pintentName:pintentName, fDevice:fDevice] 
@@ -722,5 +720,5 @@ def mSecurityD() {def text = "Tap here to configure settings"
     	text = "Configured"}
     	else text = "Tap to Configure"
 		text}
-        
-        
+
+
