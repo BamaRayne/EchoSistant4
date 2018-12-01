@@ -8,6 +8,7 @@
  
  ************************************ FOR INTERNAL USE ONLY ******************************************************
 
+ *		01 December 2018	Version: 4.6 R.0.0.2a	Moved donations to opening page
  *		27 November 2018	Version: 4.6 R.0.0.2	Bug fix in ST token generation and code clean up
  *		23 November 2018 	Version: 4.6 R.0.0.1	Version change and release
  *		26 October 2018		Version: 4.5 R.0.0.2		Re-Release
@@ -50,7 +51,7 @@ private def textVersion() {
 	def text = "1.0"
 }
 private release() {
-    def text = "Version 4.6, Revision 0.0.2"
+    def text = "Version 4.6, Revision 0.0.2a"
 }
 /**********************************************************************************************************************************************/
 preferences {   
