@@ -1,6 +1,7 @@
 /* 
 * EchoSistant Rooms Profile - EchoSistant Add-on
 *
+*		12/01/2018		Version:4.6 R.0.1.8c	Bug fix in set volume and restore of Echo Devices
 *		12/01/2018		Version:4.6 R.0.1.8b	Bug fix in motion detection feedback
 *		12/01/2018		Version:4.6 R.0.1.8a	Bug fix for setting the SHM by saying turn on the alarm
 *		12/01/2018		Version:4.6 R.0.1.8		Bug fix for feedback of devices
@@ -59,7 +60,7 @@ private release() {
 	def text = "R.0.4.6"
 }
 private revision(text) {
-	text = "Version 4.6, Revision 0.1.8b"
+	text = "Version 4.6, Revision 0.1.8c"
     return text
     }
 /**********************************************************************************************************************************************/
@@ -394,10 +395,10 @@ def pSend(){
         section ("") {
         	input "echoDevice", "device.echoSpeaksDevice", title: "Amazon Alexa Devices", multiple: true, required: false
             	input "eVolume", "number", title: "Set the volume", description: "0-100 (default value = 30)", required: false, defaultValue: 30
-            	if (eVolume) {
-                	input "svr", "bool", title: "Do you want to restore the volume to preannouncement levels?", required: false, default:faluse, submitOnChange: true
-                    if (svr == true) paragraph "The volume in the $app.label will be restored to " + sSpeaker.currentState("level")?.stringValue + " percent"
-                    }
+  //          	if (eVolume) {
+  //              	input "svr", "bool", title: "Do you want to restore the volume to preannouncement levels?", required: false, default:faluse, submitOnChange: true
+  //                  if (svr == true) paragraph "The volume in the $app.label will be restored to " + sSpeaker.currentState("level")?.stringValue + " percent"
+ //                   }
             }
         section (""){
             input "synthDevice", "capability.speechSynthesis", title: "Speech Synthesis Devices", multiple: true, required: false
