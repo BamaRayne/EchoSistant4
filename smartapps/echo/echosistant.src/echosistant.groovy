@@ -71,7 +71,7 @@ preferences {
 //dynamic page methods
 page name: "mainParentPage"
 def mainParentPage() {	
-    dynamicPage(name: "mainParentPage", title:"", install: true, uninstall:false) {
+    dynamicPage(name: "mainParentPage", title:"", install: false, uninstall:false) {
         section ("") {
             href "mProfiles", title: "Create and Manage Rooms", description: mRoomsD(), state: mRoomsS(),
             image: "https://raw.githubusercontent.com/BamaRayne/Echosistant/master/smartapps/bamarayne/echosistant.src/Echosistant_Routines.png"
@@ -88,8 +88,19 @@ def mainParentPage() {
             paragraph "The Current Mode is: ${location.currentMode}"
             paragraph "Smart Home Monitor is set to: " + getSHMStatus() 
         }
+        section("Uninstall") {
+        	href "uninstallPage", title: "Click here to remove $app.label", image:"https://raw.githubusercontent.com/jasonrwise77/My-SmartThings/master/LogicRulz%20Icons/uninstall.png"
+        }
 	}
 }
+// UNINSTALL PAGE
+page name: "uninstallPage"
+    def uninstallPage() {
+    	dynamicPage (name: "uninstallPage", title: "Clicking on the BIG RED BUTTON below will completely remove $app.label and all Routines!", install: true, uninstall: true) {
+    		section("Please ensure you are ready to take this step, there is no coming back from the brink!"){
+            }
+		}
+    }    
 
 page name: "mIntent"
 def mIntent() {
@@ -98,7 +109,7 @@ def mIntent() {
 //        	input "cCmd", "text", title: "What is the name of your primary room?", required: true, defaultValue: House, submitOnChange: true
 //            }
         section() {
-    		href url: getAppEndpointUrl("renderAwsCopyText"), style:"embedded", title:"View the Data shared with Developer", description: "Tap to view Data", required:false
+//    		href url: getAppEndpointUrl("renderAwsCopyText"), style:"embedded", title:"View the Data shared with Developer", description: "Tap to view Data", required:false
 			}
         section ("") {
             href "mSecurity", title: "Smart Home Monitor Status Changes", description: mSecurityD(), state: mSecurityS(),
@@ -138,7 +149,7 @@ def mSecurity(){
 
 page name: "mProfiles"    
 def mProfiles() {
-    dynamicPage (name: "mProfiles", title: "Create and Manage Rooms", install: true, uninstall: false) {
+    dynamicPage (name: "mProfiles", title: "Create and Manage Rooms", install: false, uninstall: false) {
         if (childApps?.size()>0) {  
             section("",  uninstall: false){
                 app(name: "EchoSistant Rooms", appName: "EchoSistant Rooms", namespace: "Echo", title: "Create a New Room", displayChildApps: false, multiple: true,  uninstall: false)
@@ -155,9 +166,10 @@ def mProfiles() {
 
 page name: "mSettings"  
 def mSettings(){
-    dynamicPage(name: "mSettings", uninstall: true) {
+    dynamicPage(name: "mSettings", uninstall: false) {
         section("") {
             input "debug", "bool", title: "Enable Debug Logging", default: true, submitOnChange: true 
+        	input "trace", "bool", title: "Enable Trace Logging", default: false, submitOnChange: true
         }
         section (""){
             input "ShowLicense", "bool", title: "Show Apache License", default: false, submitOnChange: true
@@ -179,8 +191,6 @@ def mSettings(){
                 "------------------------------------------------------------------------------------------------------------------------------------" 
             href "mTokens", title: "Revoke/Reset Security Access Token", description: "Tap here to Perform the actions"
         }
-        section("Tap below to remove the ${textAppName()} application.  This will remove ALL Profiles and the App from your SmartThings Environment."){
-        }	
     }             
 }
 
@@ -271,7 +281,8 @@ mappings {
     path("/b") { action: [GET: "processBegin"]}
 	path("/t") { action: [GET: "processTts"] }
     path("/renderAwsCopyText") { action: [GET: "renderAwsCopyText"] }
-}
+	path("/installStart") { action: [GET: "installStartHtml"] }
+    }
 
 /************************************************************************************************************
 		Base Process
@@ -325,7 +336,7 @@ def renderAwsCopyText() {
         render contentType: "text/plain", data: str
     } catch (ex) { log.error "renderAwsCopyText Exception:", ex }
 }
-String getAppEndpointUrl(subPath)   { return "${apiServerUrl("/api/smartapps/installations/${app.id}${subPath ? "/${subPath}" : ""}?access_token=${state.accessToken}")}" }
+//String getAppEndpointUrl(subPath)   { return "${apiServerUrl("/api/smartapps/installations/${app.id}${subPath ? "/${subPath}" : ""}?access_token=${state.accessToken}")}" }
 
 /************************************************************************************************************
 		Begining Process - Lambda via page b
@@ -484,14 +495,7 @@ def processTts(tts) {
         def pPIN = false
         def dataSet = [:]
         if (debug) log.debug "Messaging Profile Data: (ptts) = '${ptts}', (pintentName) = '${pintentName}'"   
-        
-/*        pintentName = pintentName.toLowerCase()
-//        if ( !ptts?.contains(state.event)) { pintentName = "$cCmd" }
-		if (state.event != pintentName) { pintentName = "$cCmd" }
-//        if (state.event == pintentName) { 
-        	if (ptts.contains("pintentName")) { child = state.event }
-//        if (ptts != null) {tts = ptts}
-*/   
+             
              childApps.each {child ->
              	if (child.label.toLowerCase() == pintentName.toLowerCase()) { 
                     if (debug) log.debug "Found a profile: '${pintentName}'"
@@ -500,7 +504,7 @@ def processTts(tts) {
                     state.lastMessage = ptts
                     state.lastIntent = pintentName
                     state.lastTime = new Date(now()).format("h:mm aa", location.timeZone)
-                    dataSet = [ptts:ptts, pintentName:pintentName, fDevice:fDevice] 
+                    dataSet = [ptts:ptts, pintentName:pintentName] 
 					def childRelease = child.checkRelease()
 					log.warn "childRelease = $childRelease"
 
@@ -528,7 +532,7 @@ def processTts(tts) {
                     	}
                 	}
             	}
-
+//			}
             if (outputTxt?.size()>0){
                 return ["outputTxt":outputTxt, "pContCmds":pContCmds, "pShort":state.pShort, "pContCmdsR":pContCmdsR, "pTryAgain":pTryAgain, "pPIN":pPIN]
             }
@@ -737,4 +741,64 @@ def mSecurityD() {def text = "Tap here to configure settings"
     	else text = "Tap to Configure"
 		text}
 
+def baseUrl(path) {
+    return "https://community-installer-34dac.firebaseapp.com${path}"
+}
+
+def getLoginUrl() {
+    def r = URLEncoder.encode(getAppEndpointUrl("installStart"))
+    def theURL = "https://account.smartthings.com/login?redirect=${r}"
+    if(settings?.authAcctType == "samsung") { theURL = "https://account.smartthings.com/login/samsungaccount?redirect=${r}" }
+    return theURL
+}
+
+def installStartHtml() {
+    def randVerStr = "?=${now()}"
+    def html = """
+        <html lang="en">
+            <head>
+                <meta name="robots" content="noindex">
+                <link rel="stylesheet" type="text/css" href="${baseUrl('/content/css/main_mdb.min.css')}" />
+                <link rel="stylesheet" type="text/css" href="${baseUrl('/content/css/main_web.min.css')}" />
+                <script src="https://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+                <script type="text/javascript">
+                    const serverUrl = '${apiServerUrl('')}';
+                    const homeUrl = '${getAppEndpointUrl('installStart')}';
+                    const loginUrl = '${getLoginUrl()}'
+                    const baseAppUrl = '${baseUrl('')}';
+                    const appVersion = '${release()}';
+                    const hashedUuid = '${generateLocationHash()}';
+                </script>
+            </head>
+            <body>
+                <div id="bodyDiv"></div>
+                <script type="text/javascript" src="${baseUrl('/content/js/awesome_file.js')}${randVerStr}"></script>
+            </body>
+        </html>"""
+    render contentType: "text/html", data: html
+}
+def generateLocationHash() {
+    def s = location?.getId()
+    MessageDigest digest = MessageDigest.getInstance("MD5")
+    digest.update(s.bytes);
+    new BigInteger(1, digest.digest()).toString(16).padLeft(32, '0') 
+}
+
+def getAccessToken() {
+    try {
+        if(!atomicState?.accessToken) {
+            log.error "SmartThings Access Token Not Found... Creating a New One!!!"
+            atomicState?.accessToken = createAccessToken()
+        } else { return true }
+    }
+    catch (ex) {
+        log.error "Error: OAuth is not Enabled for ${app?.label}!.  Please click remove and Enable Oauth under the SmartApp App Settings in the IDE"
+        return false
+    }
+}
+
+def gitBranch()         { return "master" }
+def getAppImg(file)	    { return "https://cdn.rawgit.com/tonesto7/st-community-installer/${gitBranch()}/images/$file" }
+def getAppVideo(file)	{ return "https://cdn.rawgit.com/tonesto7/st-community-installer/${gitBranch()}/videos/$file" }
+def getAppEndpointUrl(subPath)	{ return "${apiServerUrl("/api/smartapps/installations/${app.id}${subPath ? "/${subPath}" : ""}?access_token=${atomicState.accessToken}")}" }
 
