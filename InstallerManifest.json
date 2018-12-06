@@ -45,7 +45,7 @@
                 "iconUrl": "https://raw.githubusercontent.com/jasonrwise77/My-SmartThings/master/LogicRulz%20Icons/Blok.png",
                 "published": true,
                 "oAuth": false,
-                "version": "4.6",
+                "version": "5.0",
                 "appSettings": {},
                 "appUrl": "smartapps/echo/echosistant-logic-blockz.src/echosistant-logic-blockz.groovy",
                 "optional": false
