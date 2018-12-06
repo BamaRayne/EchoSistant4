@@ -41,13 +41,13 @@
                 "optional": false
             },
             {
-                "name": "Echosistant Rooms Shortcuts",
-                "iconUrl": "https://raw.githubusercontent.com/BamaRayne/Echosistant/master/smartapps/bamarayne/echosistant.src/app-Echosistant.png",
+                "name": "Echosistant Logic Blockz",
+                "iconUrl": "https://raw.githubusercontent.com/jasonrwise77/My-SmartThings/master/LogicRulz%20Icons/Blok.png",
                 "published": true,
                 "oAuth": false,
                 "version": "4.6",
                 "appSettings": {},
-                "appUrl": "smartapps/echo/echosistant-rooms-shortcuts.src/echosistant-rooms-shortcuts.groovy",
+                "appUrl": "smartapps/echo/echosistant-logic-blockz.src/echosistant-logic-blockz.groovy",
                 "optional": false
             }
         ]
