@@ -1,6 +1,7 @@
 /* 
 * EchoSistant Rooms Profile - EchoSistant Add-on
 *
+*		12/06/2018		Version:4.6 R.0.1.9a	Bug fixes and change of shortcuts to Logic Blocks
 *		12/04/2018		Version:4.6 R.0.1.9		Complete rewrite of control section. Expanded compound commands and delays
 *		12/01/2018		Version:4.6 R.0.1.8c	Bug fix in set volume and restore of Echo Devices
 *		12/01/2018		Version:4.6 R.0.1.8b	Bug fix in motion detection feedback
@@ -61,7 +62,7 @@ private release() {
 	def text = "R.0.4.6"
 }
 private revision(text) {
-	text = "Version 4.6, Revision 0.1.9"
+	text = "Version 4.6, Revision 0.1.9a"
     return text
     }
 /**********************************************************************************************************************************************/

@@ -87,7 +87,8 @@ definition(
 	iconX3Url		: "https://raw.githubusercontent.com/jasonrwise77/My-SmartThings/master/LogicRulz%20Icons/LogicRulz2x.png")
 /**********************************************************************************************************************************************/
 private def version() { 
-    	def text = "LogicBlocks Ver 2.0 / R.0.5.0, Release date: 12/05/2018, Initial App Release Date: 04/23/2018" 
+    	def text = "Version 2.0, Revision 0.5.0"
+        //LogicBlocks Ver 2.0 / R.0.5.0, Release date: 12/05/2018, Initial App Release Date: 04/23/2018" 
 	}
 
 preferences {
