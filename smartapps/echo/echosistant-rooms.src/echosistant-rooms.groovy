@@ -87,7 +87,7 @@ preferences {
 
 // MAIN PROFILE - HOME PAGE
 def mainProfilePage() {	
-    dynamicPage(name: "mainProfilePage", title:"", install: false, uninstall: false) {
+    dynamicPage(name: "mainProfilePage", title:"", install: true, uninstall: true) {
         section ("") {
             label title:"Name this Room", required:true,
             image: "https://raw.githubusercontent.com/BamaRayne/SmartSuite/master/Icons/Name.jpg"
@@ -4325,4 +4325,3 @@ def remindRProfiles(evt) {
     }
     return result
 }
-
