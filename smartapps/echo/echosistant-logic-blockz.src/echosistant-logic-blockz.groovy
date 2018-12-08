@@ -2019,16 +2019,10 @@ def sendToRemindR(evt) {
 ******************************************************************************************************/
 def sendToSMC(evt) {
 	def message = runProfile(message, evt)
+    def value = "${app.label}"
     log.debug "Sending this message to SMC: $message"
-//    	SMCZones.each {zone ->
-//        	log.trace "Found a zone: $zone"
-			sendLocationEvent(name: "SmartMessaging", value: "${app.label}", isStateChange: true, descriptionText: "${message}")
-//    		sendLocationEvent(name: "Logic Rulz", value: "${app.label}", isStateChange: true, descriptionText: "${message}")
-            //sendLocationEvent(name: "Logic Rulz", value: zone, isStateChange: true, descriptionText: message)
-//    		sendLocationEvent(name: "Logic Rulz", value: speak, isStateChange: true, descriptionText: message)
-            log.trace "SMC Zone event details: name = Logic Rulz, value = $evt.value, msg = $message"
+			sendLocationEvent(name: "SmartMessaging", value: "$value", isStateChange: true, descriptionText: "${message}")
 			}
-//		}
         
 /***********************************************************************************************************************
     Logic Blocks being executed after a delay
