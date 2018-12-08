@@ -810,7 +810,7 @@ SPEECH AND TEXT PROCESSING INTERNAL - FEEDBACK
 ******************************************************************************************************/
 def profileFeedbackEvaluate(params) {
     log.info "profileFeedbackEvaluate has been activated with params: $params"
-    def tts = params.ptts
+    def tts = params.ptts.toLowerCase()
     def intent = params.pintentName        
     def childName = app.label       
     def data = [:]
@@ -826,7 +826,7 @@ def profileFeedbackEvaluate(params) {
     def String deviceType = (String) null
     def String colorMatch = (String) null
     if (tts != null) {
-        tts = tts.replaceAll("[^a-zA-Z0-9 ]", "") }
+        tts = tts.replaceAll("[^a-zA-Z0-9-' ]", "") }
     
     if (command == "undefined") {
         outputTxt = "Sorry, I didn't get that, "
@@ -878,13 +878,13 @@ def profileFeedbackEvaluate(params) {
         if (tts.contains("is the alarm") || tts.contains("security system")) {
             def currentSHM = location.currentState("alarmSystemStatus")?.value
             def shmStatus = currentSHM == "stay" ? "armed home" : currentSHM == "away" ? "armed away" : currentSHM == "off" ? "set to disarmed" : null
-            if (tts.contains("on") || tts.contains("armed")) {
+            if (tts.contains(" on") || tts.contains(" armed")) {
                 outputTxt = "Yes, the alarm is currently set to $shmStatus"
                 if (currentSHM == ("off")) {
                     outputTxt = "No, the alarm is currently $shmStatus"
                 }
             }
-            if (tts.contains("off") || tts.contains("disarmed")) {
+            if (tts.contains(" off") || tts.contains("disarmed")) {
                 outputTxt = "No, the alarm is currently set to $shmStatus"
                 if (currentSHM == ("off")) {
                     outputTxt = "Yes, the alarm is currently $shmStatus"
@@ -913,7 +913,7 @@ def profileFeedbackEvaluate(params) {
         tts.contains("light") ? "light" : tts.contains("shade") ? "shade" : tts.contains("blind") ? "blind" : tts.contains("curtains") ? "curtain" : null
 
         def fCommand = tts=="who is at home" ? "present" : tts=="who is home" ? "present" : tts=="who is not home" ? "not present" : tts=="who is not at home" ? "not present" : tts.contains("open") ? "open" : 
-        tts.contains("closed") ? "closed" : tts.contains("on") ? "on" : tts.contains("off") ? "off" : null
+        tts.contains("closed") ? "closed" : tts.contains(" on") ? "on" : tts.contains("off") ? "off" : null
 
         if (tts.contains("check") && tts.contains("light")) { fCommand = "on" }
         if (tts.contains("motion")) { fCommand = "active" }
@@ -923,7 +923,7 @@ def profileFeedbackEvaluate(params) {
 
         //  MISC DEVICES FEEDBACK - BUILDS DEVICE LISTS        
         if (tts.contains("how") || tts.contains("TV") || tts.contains("who") || tts.contains("window") || tts.contains("vent") || tts.contains("lock") || tts.contains("blind") || tts.contains("curtain") || tts.contains("shade") || tts.contains("door") || tts.contains("lights") || tts.contains("fan")) {
-            if (tts.contains("on") || tts.endsWith("off") || tts.contains("open") || tts.contains("closed") || tts.endsWith("home") || tts.startsWith("check") || tts.contains("eon") ||tts.contains("switches")) {
+            if (tts.contains(" on") || tts.endsWith("off") || tts.contains("open") || tts.contains("closed") || tts.endsWith("home") || tts.startsWith("check") || tts.contains("eon") ||tts.contains("switches")) {
                 def devList = [] 
                 if (fDevice == null) {
                     outputTxt = "I'm sorry, it seems that you have not selected any devices for this query, please configure your feedback devices in the EchoSistant smartapp."
@@ -1012,7 +1012,7 @@ def profileFeedbackEvaluate(params) {
                 }
                 if (tts.contains("$lMatch")) {
                     def fLightsStatus = s?.latestValue("switch")
-                    if (tts.contains("on")) {
+                    if (tts.contains(" on")) {
                         if (fLightsStatus == "on") {
                             outputTxt = "Yes, the $lMatch is $fLightsStatus"
                         }
@@ -1021,7 +1021,7 @@ def profileFeedbackEvaluate(params) {
                         }
                     }
                     else {    
-                        if (fLightsStatus == "off") {
+                        if (fLightsStatus == " off") {
                             outputTxt = "Yes, the $lMatch is $fLightsStatus"
                         }
                         if (fLightsStatus == "on") {
@@ -1388,7 +1388,7 @@ def profileFeedbackEvaluate(params) {
 ******************************************************************************************************/
 def profileEvaluate(params) {
     log.info "The profileEvaluate ($params.pintentName) has been activated and received this: $params.ptts"
-    def tts = params.ptts
+    def tts = params.ptts.toLowerCase()
 	def outputTxt = null
 
 		// PARSE INCOMING TTS INTO INDIVIDUAL COMMANDS  
@@ -1555,8 +1555,7 @@ def deviceCmd(tts) {
     	}
     }
 
-
-    // INDIVIDUAL AND GROUPS OF LIGHTS, LAMPS, & SWITCHES AS WELL AS ALEXA FEELINGS COMMANDS
+	// INDIVIDUAL AND GROUPS OF LIGHTS, LAMPS, & SWITCHES AS WELL AS ALEXA FEELINGS COMMANDS
     if (deviceType == "light" || deviceType == "light1" || deviceType == "light2" || deviceType == "light3" || deviceType == "light4" ||
     deviceType == "light5" || deviceType == "dimmer" || deviceType == "newLevel") {
         gSwitches?.each { m ->
@@ -1569,7 +1568,7 @@ def deviceCmd(tts) {
                 m."$command"()
                 outputTxt = "I have turned $command the $mMatch"
                 return outputTxt
-            }		// LIGHTS GROUP AND CUSTOM GROUPS
+            }	// LIGHTS GROUP AND CUSTOM GROUPS
             else if (tts.contains("turn") && command != "undefined" && (tts.contains("lights") || deviceType == "light1" || deviceType == "light2" || deviceType == "light3" || deviceType == "light4" || deviceType == "light5")) {  
                 if (deviceType == "light") gSwitches?."$command"()
                 if (deviceType == "light1") gCustom1?."$command"() 
@@ -1653,7 +1652,7 @@ def deviceCmd(tts) {
                 if (command == "on" || command == "off") {
                     m."$command"()
                     if (command == "on") {
-                    outputTxt = "I have turned $command the $mMatch, and it is set to $lvlNow percent"
+                    outputTxt = "I have turned $command the $mMatch"
                     }
                     else outputTxt = "I have turned off the $mMatch"
                     return outputTxt
@@ -1685,7 +1684,7 @@ def deviceCmd(tts) {
                         else if (command == "low") {newLevel = cLow}
                         else if (command == "on") {newLevel = "on"}
                         else if (command == "off") {newLevel = "off"}
-                        if (newLevel == "on" || newLevel == "off") {
+                        if (newLevel == on || newLevel == off) {
                             outputTxt = "Ok, I am turning $newLevel the fans in the " + app.label
                             if (parent.trace) log.trace "deviceD = $gFans && command = $newLevel"
                             if (newLevel == "on") { deviceD.on() }
@@ -2518,7 +2517,7 @@ private getCommand(text){
         if (gSwitches) {
             command = text.contains("turn on") ? "on" : text.contains("turn off") ? "off" : text.contains("switch on") ? "on" : text.contains("lights on") ? "on" : text.contains("lights off") ? "off" : text.contains("switch off") ? "off" : "undefined"
             if (command == "undefined") {
-               	command = text.contains("darker") ? "decrease" : text.contains("decrease") ? "decrease" : text.contains("dim") ? "decrease" : text.contains("dimmer") ? "decrease" : text.contains("lower") ? "decrease" :"undefined"
+               	command = text.contains("darker") ? "decrease" : text.contains("decrease") ? "decrease" : text.contains("dim ") ? "decrease" : text.contains("dimmer") ? "decrease" : text.contains("lower") ? "decrease" :"undefined"
             	}
             if (command == "undefined") {
                 command = text.contains("raise") ? "increase" : text.contains("brighter")  ? "increase" : text.contains("increase") ? "increase" : text.contains("brighten") ? "increase" : "undefined"
@@ -2636,11 +2635,11 @@ private getCommand(text){
     
     // Fans
     if (text.startsWith("set the fan") || text.contains("set the fans") || text.contains("fans") || text.contains("set the speed") || text.contains("fan") || text.contains("cold") || text.contains("hot")) {
-        if (text.contains("on") || text.contains("start")) {
+        if (text.contains(" on ") || text.contains("start")) {
             command = "on" 
             deviceType = "fan"
         }
-        else if (text.contains("off") || text.contains("stop")) {
+        else if (text.contains(" off ") || text.contains("stop")) {
             command = "off" 
             deviceType = "fan"
         }

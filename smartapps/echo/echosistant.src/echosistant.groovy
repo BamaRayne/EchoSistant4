@@ -802,4 +802,3 @@ def gitBranch()         { return "master" }
 def getAppImg(file)	    { return "https://cdn.rawgit.com/tonesto7/st-community-installer/${gitBranch()}/images/$file" }
 def getAppVideo(file)	{ return "https://cdn.rawgit.com/tonesto7/st-community-installer/${gitBranch()}/videos/$file" }
 def getAppEndpointUrl(subPath)	{ return "${apiServerUrl("/api/smartapps/installations/${app.id}${subPath ? "/${subPath}" : ""}?access_token=${atomicState.accessToken}")}" }
-
