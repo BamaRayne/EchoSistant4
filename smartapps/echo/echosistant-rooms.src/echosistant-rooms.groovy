@@ -1,6 +1,7 @@
 /* 
 * EchoSistant Rooms Profile - EchoSistant Add-on
 *
+*		12/08/2018		Version:4.6 R.0.1.9b	Bug fixes in logic
 *		12/06/2018		Version:4.6 R.0.1.9a	Bug fixes and change of shortcuts to Logic Blocks
 *		12/04/2018		Version:4.6 R.0.1.9		Complete rewrite of control section. Expanded compound commands and delays
 *		12/01/2018		Version:4.6 R.0.1.8c	Bug fix in set volume and restore of Echo Devices
@@ -62,7 +63,7 @@ private release() {
 	def text = "R.0.4.6"
 }
 private revision(text) {
-	text = "Version 4.6, Revision 0.1.9a"
+	text = "Version 4.6, Revision 0.1.9b"
     return text
     }
 /**********************************************************************************************************************************************/
@@ -822,12 +823,13 @@ def profileFeedbackEvaluate(params) {
     def String outputTxt = (String) null 
     def String scheduler = (String) null     
     def String ttsR = (String) null
-    def String command = (String) null
-    def String deviceType = (String) null
+//    def String command = (String) null
+//    def String deviceType = (String) null
     def String colorMatch = (String) null
+    
     if (tts != null) {
         tts = tts.replaceAll("[^a-zA-Z0-9-' ]", "") }
-    
+
     if (command == "undefined") {
         outputTxt = "Sorry, I didn't get that, "
         state.pTryAgain = false
@@ -1000,10 +1002,10 @@ def profileFeedbackEvaluate(params) {
             if (parent.debug) log.debug "Dimmers levels requested: $outputTxt"
             return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
         }    
-
-    // LIGHTS, FANS, & TV INDIVIDUAL FEEDBACK - ON AND OFF STATUS
-        if ((tts.contains("fan") || tts.contains("TV") || tts.contains("light") || tts.contains("lamp") || tts.contains("automations")) && (tts.contains("on") || tts.contains("off"))) {
-        if (parent.debug) log.debug "Checking to see if a light, fan, or TV is on or off"
+    
+    // LIGHTS, & TV INDIVIDUAL FEEDBACK - ON AND OFF STATUS
+        if ((tts.contains("TV") || tts.contains("light") || tts.contains("lamp") || tts.contains("automations")) && (tts.contains("on") || tts.contains("off"))) {
+        if (parent.debug) log.debug "Checking to see if a light, or TV is on or off"
             fSwitches.each { s ->
                 def lMatch = s.label.toLowerCase()
                 if (parent.debug) log.debug "the matched device, lMatch is: $lMatch"
@@ -1012,7 +1014,7 @@ def profileFeedbackEvaluate(params) {
                 }
                 if (tts.contains("$lMatch")) {
                     def fLightsStatus = s?.latestValue("switch")
-                    if (tts.contains(" on")) {
+                    if (tts.contains("on")) {
                         if (fLightsStatus == "on") {
                             outputTxt = "Yes, the $lMatch is $fLightsStatus"
                         }
@@ -1120,24 +1122,30 @@ def profileFeedbackEvaluate(params) {
             return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]		
         }
 
-        // CEILING FANS - SPEEDS AND LEVELS //
-        if (tts.contains("what speed") && tts.contains("fan")) {
+        // CEILING FANS & FANS - SPEEDS AND LEVELS, ON & OFF //
+        if (tts.contains("fan")) {
+        if (tts.contains("what speed") || tts.contains("fan")) {
             if (parent.debug) log.debug "Ceiling fan speed requested"
             fFans?.each { f -> 
                 def fMatch = f.label.toLowerCase()
                 if (parent.debug) log.debug "fMatch is: $fMatch"
-				if(!tts.contains("$fMatch}")) { outputTxt = "I'm sorry, I could not find the requested device in the $app.label" }
                 if(tts.contains("${fMatch}")) {
+                    def status = f.currentValue("switch")
                     def speed = f.currentValue("level")	
 					if(speed == 0) { outputTxt = "The $fMatch is currently off" }
                     if(speed > 0 || 33 <= 1) { outputTxt = "The $fMatch is currently set on low, at $speed percent" }
                     if(speed > 33 || 66 <= 33) { outputTxt = "The $fMatch is currently set on medium, at $speed percent" }
                     if(speed > 67) { outputTxt = "The $fMatch is currently set on high, at $speed percent" }
+                	if(status == "on" && tts.contains(" on")) {outputTxt = "Yes, The $fMatch is currently on" }
+                    if(status == "on" && tts.contains(" off")) {outputTxt = "No, The $fMatch is currently on" }
+                    if(status == "off" && tts.contains(" on")) {outputTxt = "No, The $fMatch is currently off" }
+                    if(status == "off" && tts.contains("off ")) {outputTxt = "Yes, The $fMatch is currently off" }
                 }
             }
             if (parent.debug) log.debug "Ceiling fan speed requested: $outputTxt"
             return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
-        }    
+        	}
+		}
         
         // TEMPERATURE //
         if (tts == "what is the temperature" || tts == "whats the temperature" || tts == "whats the temp"){
@@ -1544,10 +1552,8 @@ def deviceCmd(tts) {
             	mMatch = mMatch.toUpperCase()
                 }*/
 
-  //  if (parent.debug) {log.debug "end of control engine, command=${command}, deviceType = ${deviceType}"}
-    if (command == "undefined") {
-    if (deviceType == "light" || deviceType == "message") { //if ((!sonosDevice && !synthDevice)) {   
-   //     state.lastMessage = tts
+    if (command == "undefined" || command == null) {
+    if (deviceType == "light" || deviceType == "message" || (deviceType == null && command == null)) { //if ((!sonosDevice && !synthDevice)) {   
         state.lastTime = new Date(now()).format("h:mm aa, dd-MMMM-yyyy", location.timeZone)
         outputTxt = ttsHandler(tts) 
         def pContCmdsR = "profile"

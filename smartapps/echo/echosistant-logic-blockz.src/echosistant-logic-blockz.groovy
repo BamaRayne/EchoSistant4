@@ -2,6 +2,7 @@
 * EchoSistant Rooms Logic Blocks
 *
 *
+*	12/07/2018		Version:2.0 R.0.5.1		Added new variables: &shm, &mode, &tempIn, &tempOut, &humIn, &humOut, &fans
 *	12/05/2018		Version:2.0 R.0.5.0		Name change and redeployed as grandchild app to EchoSistant
 *	09/13/2018		Version:2.0 R.0.4.3		Added Echo Devices as output devices
 *	06/27/2017		Version:2.0 R.0.4.2		Bug fix in custom message variables
@@ -87,7 +88,7 @@ definition(
 	iconX3Url		: "https://raw.githubusercontent.com/jasonrwise77/My-SmartThings/master/LogicRulz%20Icons/LogicRulz2x.png")
 /**********************************************************************************************************************************************/
 private def version() { 
-    	def text = "Version 2.0, Revision 0.5.0"
+    	def text = "Version 2.0, Revision 0.5.1"
         //LogicBlocks Ver 2.0 / R.0.5.0, Release date: 12/05/2018, Initial App Release Date: 04/23/2018" 
 	}
 
@@ -829,30 +830,33 @@ def pSend(){
                                     "&device, &action \n"+
                                     "&winOpen, &winClosed \n"+
                                     "&doorOpen, &doorClosed \n"+
-                                    "&lightsOn \n"+
+                                    "&lightsOn, &fans \n"+
                                     "\n"+
                                     "LOCATION: \n"+
                                     "&time, &date, &stRoutAction, &stRoutEvent \n"+ 
-                                    "\n"+
+                                    "&shm, &mode \n"+
                                     "Temperature Variables: \n"+
-                                    "&temperature, &high, &low, &tempTrend, &feelsLike \n"+
+                                    "&tempIn, &tempOut, &high, &low, &tempTrend, &feelsLike \n"+
                                     "\n"+
                                     "Sensors Variables: \n"+
                                     "&smoke, &CO2, &water \n"+
                                     "\n"+
                                     "Climate Variables: \n"+
-                                    "&windSpeed, &windDir, &rain, &humidity \n"+
+                                    "&windSpeed, &windDir, &rain, &humIn, &humOut \n"+
                                     "\n"
 					                }
 		section ("Message Variables Devices") {
         	input "vWindows", "capability.contactSensor", title: "Windows", required: false, multiple: true, submitOnChange: true
             input "vDoors", "capability.contactSensor", title: "Doors", required: false, multiple: true, submitOnChange: true
             input "vLights", "capability.switch", title: "Lights", required: false, multiple: true, submitOnChange: true
-            input "vTemperature", "capability.temperatureMeasurement", title: "Temperature", required: false, multiple: true, submitOnChange: true
+            input "vFans", "capability.switch", title: "Fans", required: false, multiple: true, submitOnChange: true
+            input "vTempIn", "capability.temperatureMeasurement", title: "Temperature Inside", required: false, multiple: true, submitOnChange: true
+            input "vTempOut", "capability.temperatureMeasurement", title: "Temperature Outside", required: false, multiple: true, submitOnChange: true
         	input "vFeelsLike", "capability.relativeHumidityMeasurement", title: "How it feels", required: false, multiple: true, submitOnChange: true
             input "vWind", "capability.sensor", title: "Wind Speed, Direction, Gusts", multiple: true, required: false, submitOnChange: true
             input "vRain", "capability.sensor", title: "Rain Accumulation", multiple: true, required: false, submitOnChange: true
-            input "vHumidity", "capability.relativeHumidityMeasurement", title: "Relative Humidity", required: false, submitOnChange: true
+            input "vHumIn", "capability.relativeHumidityMeasurement", title: "Relative Humidity Inside", multiple: true, required: false, submitOnChange: true
+            input "vHumOut", "capability.relativeHumidityMeasurement", title: "Relative Humidity Outside", multiple: true, required: false, submitOnChange: true
             input "vLux", "capability.illuminanceMeasurement", title: "Lux Level", required: false, submitOnChange: true
            	input "vWater", "capability.waterSensor", title: "Water/Moisture Sensors", required: false, multiple: true, submitOnChange: true
             input "vSmoke", "capability.smokeDetector", title: "Smoke Detectors", required: false, multiple: true, submitOnChange: true
@@ -3616,6 +3620,8 @@ def runProfile(message, evt) {
         result = result ? "$result".replace("&smoke", "${getVar("smoke")}").replace("&CO2", "${getVar("CO2")}").replace("&water", "${getVar("water")}") : null
         result = result ? "$result".replace("&device", "${getVar("device")}").replace("&action", "${getVar("action")}").replace("&stRoutAction", "${getVar("stRoutAction")}") : null
         result = result ? "$result".replace("&stRoutEvent", "${getVar("stRoutEvent")}").replace("&feelsLike", "${getVar("feelsLike")}") : null
+        result = result ? "$result".replace("&shm", "${getVar("shm")}").replace("&mode", "${getVar("mode")}").replace("&humIn", "${getVar("humIn")}").replace("&humOut", "${getVar("humOut")}") : null
+        result = result ? "$result".replace("&fans", "${getVar("fans")}").replace("&tempIn", "${getVar("tempIn")}").replace("&tempOut", "${getVar("tempOut")}") : null
 //        result = getWeatherVar(result) 
     }
     return stripBrackets(result ? " $result " : "")
@@ -3627,6 +3633,16 @@ private getVar(var) {
     def devList = []
     def result
     
+	if (var == "mode"){
+        result = location.currentMode
+        return stripBrackets(result ? " $result " : "")
+    }
+	if (var == "shm"){
+        def currentSHM = location.currentState("alarmSystemStatus")?.value
+        def shmStatus = currentSHM == "stay" ? "armed home" : currentSHM == "away" ? "armed away" : currentSHM == "off" ? "disarmed" : null
+        result = shmStatus
+        return stripBrackets(result ? " $result " : "")
+    }
 	if (var == "time"){
         result = new Date(now()).format("h:mm aa", location.timeZone) 
         return stripBrackets(result ? " $result " : "")
@@ -3635,30 +3651,39 @@ private getVar(var) {
         result = new Date(now()).format("EEEE, MMMM d, yyyy", location.timeZone)
         return stripBrackets(result ? " $result " : "")    
     }
-    if (var == "temperature"){    
-        if(vTemperature){
+    if (var == "tempIn"){    
+        if(vTempIn){
             def total = 0
-            vTemperature.each {total += it.currentValue("temperature")}
+            vTempIn.each {total += it.currentValue("temperature")}
             int avgT = total as Integer
-            result = Math.round(total/vTemperature?.size()) + " degrees"
+            result = Math.round(total/vTempIn?.size()) + " degrees"
+            return stripBrackets(result ? " $result " : "")
+        }
+    }
+    if (var == "tempOut"){    
+        if(vTempOut){
+            def total = 0
+            vTempOut.each {total += it.currentValue("temperature")}
+            int avgT = total as Integer
+            result = Math.round(total/vTempOut?.size()) + " degrees"
             return stripBrackets(result ? " $result " : "")
         }
     }
     if (var == "high"){    
         if(vTemperature){
-            result = vTemperature.latestValue("max_temp") + " degrees"             	
+            result = vtempOut.latestValue("max_temp") + " degrees"             	
             return stripBrackets(result ? " $result " : "")
         }
     }
     if (var == "low"){    
         if(vTemperature){
-            result = vTemperature.latestValue("min_temp") + " degrees"             	
+            result = vtempOut.latestValue("min_temp") + " degrees"             	
             return stripBrackets(result ? " $result " : "")
         }
     }
     if (var == "tempTrend"){    
         if(vTemperature){
-            result = "trending " + vTemperature.latestValue("temp_trend")             	
+            result = "trending " + vtempOut.latestValue("temp_trend")             	
             return stripBrackets(result ? " $result " : "")
         }
     }
@@ -3691,16 +3716,27 @@ private getVar(var) {
         return stripBrackets(result ? " $result " : "")
     }
     if (var == "action"){ 
-    log.info "the door is $state.eAct"
         result = "${state.eAct}"
         return stripBrackets(result ? " $result " : "")
     }
-    if (var == "humidity"){    
-        if(vHumidity){
-            result = vHumidity.latestValue("humidity") + " percent"             	
+    if (var == "humIn"){    
+        if(vHumIn){
+            def total = 0
+            vHumIn.each {total += it.currentValue("humidity")}
+            int avgT = total as Integer
+            result = Math.round(total/vHumIn?.size()) + " percent"
             return stripBrackets(result ? " $result " : "")
+            }
         }
-    }
+    if (var == "humOut"){    
+        if(vhumOut){
+            def total = 0
+            vhumOut.each {total += it.currentValue("humidity")}
+            int avgT = total as Integer
+            result = Math.round(total/vHumIn?.size()) + " percent"
+            return stripBrackets(result ? " $result " : "")
+            }
+        }
     if (var == "windSpeed"){    
         if(vWind){
             result = vWind.latestValue("WindStrength") + " miles per hour"             	
@@ -3802,7 +3838,7 @@ private getVar(var) {
             }
             if (devList?.size() == 1)  result = devList?.size() + " door is open: $devList"
             else if (devList?.size() > 0) result = devList?.size() + " doors are open: $devList"
-                else if (!devList) result = "There are no doors open"
+                else if (!devList) result = "All of the doors are Closed"
                     return stripBrackets(result ? " $result " : "")
                 }
     	}
@@ -3816,9 +3852,9 @@ private getVar(var) {
                     }
                 }
             }
-            if (devList?.size() == 1)  result = devList?.size() + " door is open: $devList"
-            else if (devList?.size() > 0) result = devList?.size() + " doors are open: $devList"
-                else if (!devList) result = "There are no doors open"
+            if (devList?.size() == 1)  result = devList?.size() + " door is closed: $devList"
+            else if (devList?.size() > 0) result = devList?.size() + " doors are closed: $devList"
+                else if (!devList) result = "All of the doors are Open"
                     return stripBrackets(result ? " $result " : "")
                 }
     	}
@@ -3834,12 +3870,28 @@ private getVar(var) {
             }
             if (devList?.size() == 1)  result = devList?.size() + " light is on: $devList"
             else if (devList?.size() > 0) result = devList?.size() + " lights are on: $devList"
-                else if (!devList) result = "There are no lights on"
+                else if (!devList) result = "All of the lights are off"
+                    return stripBrackets(result ? " $result " : "")
+                }
+    		}
+    if (var == "fans"){
+        if(vFans){
+            if (vFans.latestValue("switch")?.contains("on")) {
+                vFans.each { deviceName ->
+                    if (deviceName.currentValue("switch")=="${"on"}") {
+                        String device  = (String) deviceName
+                        devList += device
+                    }
+                }
+            if (devList?.size() == 1)  result = devList?.size() + " fan is on: $devList"
+            else if (devList?.size() > 0) result = devList?.size() + " fans are on: $devList"
+                else if (!devList) result = "All of the fans are off"
                     return stripBrackets(result ? " $result " : "")
                 }
     		}
         }
-
+	}
+    
 private stripBrackets(str) {
     str = str.replace("[", "")
     return str.replace("]", "")

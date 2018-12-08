@@ -41,7 +41,7 @@ definition(
     author			: "JH/BD",
 	description		: "Control and Feedback of your Smart Things Environment via Natural Conversations with Alexa.",
 	category		: "My Apps",
-    singleInstance	: true,
+    singleInstance	: false,
 	iconUrl			: "https://raw.githubusercontent.com/BamaRayne/Echosistant/master/smartapps/bamarayne/echosistant.src/app-Echosistant.png",
 	iconX2Url		: "https://raw.githubusercontent.com/BamaRayne/Echosistant/master/smartapps/bamarayne/echosistant.src/app-Echosistant@2x.png",
 	iconX3Url		: "https://raw.githubusercontent.com/BamaRayne/Echosistant/master/smartapps/bamarayne/echosistant.src/app-Echosistant@2x.png")
@@ -66,13 +66,14 @@ preferences {
     page name: "mTokenReset"
     page name: "mBonus"
     page name: "mDashboard"
+    page name: "spellings"
 
 }
 
 //dynamic page methods
 page name: "mainParentPage"
 def mainParentPage() {	
-    dynamicPage(name: "mainParentPage", title:"", install: false, uninstall:false) {
+    dynamicPage(name: "mainParentPage", title:"", install: true, uninstall:false) {
         section ("") {
             href "mProfiles", title: "Create and Manage Rooms", description: mRoomsD(), state: mRoomsS(),
             image: "https://raw.githubusercontent.com/BamaRayne/Echosistant/master/smartapps/bamarayne/echosistant.src/Echosistant_Routines.png"
@@ -106,9 +107,10 @@ page name: "uninstallPage"
 page name: "mIntent"
 def mIntent() {
     dynamicPage (name: "mIntent", title: "Settings and Support", install: false, uninstall: false) {
-//        section ("Cross Commands") {
-//        	input "cCmd", "text", title: "What is the name of your primary room?", required: true, defaultValue: House, submitOnChange: true
-//            }
+        section() {
+        	href "spellings", title: "Do you have family members with names spelled a little differently?",
+            image: "https://raw.githubusercontent.com/BamaRayne/SmartSuite/master/Icons/Strange.png"
+            }
         section() {
 //    		href url: getAppEndpointUrl("renderAwsCopyText"), style:"embedded", title:"View the Data shared with Developer", description: "Tap to view Data", required:false
 			}
@@ -180,14 +182,14 @@ def mSettings(){
         section ("Security Tokens", hideable: true, hidden: true) {
         	log.info "The information below is required to be copy and pasted into the AWS Lambda file. \n" +
     				"\n---------------------------------------------------------------------------------------\n" +
-                    "\nvar STappID = '${app.id}' \n var STtoken = '${state.accessToken}';\n" +
+                    "\nvar STappID = '${app.id}' ; \n var STtoken = '${state.accessToken}' ;\n" +
                    	"\nvar url= '${apiServerUrl("/api/smartapps/installations/")}' + STappID + '/' ;' ;\n" +
                     //var url= 'https://graph-na02-useast1.api.smartthings.com:443/api/smartapps/installations/")}' + STappID + '/' ;' ;\n" +
                     
                     "\n---------------------------------------------------------------------------------------"
             paragraph "The information below is required to be copy and pasted into the AWS Lambda file. \n" +
                 "------------------------------------------------------------------------------------------------------------------------------------\n" +
-                " var SmartThings Token = '${state.accessToken}' ;\n" +
+                " var SmartThings Token = '${state.accessToken}' ; ' ; '\n" +
                 " var url= '${apiServerUrl("/api/smartapps/installations/")}' + STappID + '/' ;\n" +
                 "------------------------------------------------------------------------------------------------------------------------------------" 
             href "mTokens", title: "Revoke/Reset Security Access Token", description: "Tap here to Perform the actions"
@@ -237,6 +239,30 @@ def mTokenReset(){
         }
     }
 }
+
+page name: "spellings"
+def spellings(){
+    dynamicPage(name: "spellings", uninstall: false) {
+        section ("") {
+            paragraph "This section is to help you take care of those names that are spelled a little differently "+
+                "Such as, your name is spelled Kristopher instead of Christopher." +
+                "Alexa likes things spelled a certain way, so just fill in the information below and we will take care of it for you"
+        }
+        section ("Your 1st Anomoly") {
+            input "name1", "text", title: "How do you spell it?", required: false, default: "", submitOnChange: true
+            input "name2", "text", title: "How does Alexa spell it? Check the logs", required: false, default: "", submitOnChange: true
+        }
+        section ("Your 2nd Anomoly") {
+            input "name3", "text", title: "How do you spell it?", required: false, default: "", submitOnChange: true
+            input "name4", "text", title: "How does Alexa spell it? Check the logs", required: false, default: "", submitOnChange: true
+        }
+        section ("Your 3rd Anamoly") {
+            input "name5", "text", title: "How do you spell it?", required: false, default: "", submitOnChange: true
+            input "name6", "text", title: "How does Alexa spell it? Check the logs", required: false, default: "", submitOnChange: true
+        }        
+    }
+}
+
 
 page name: "mSupport"  
 def mSupport(){
@@ -496,6 +522,16 @@ def processTts(tts) {
         def pPIN = false
         def dataSet = [:]
         if (debug) log.debug "Messaging Profile Data: (ptts) = '${ptts}', (pintentName) = '${pintentName}'"   
+             
+    if (ptts.contains("$name2")) {
+    	ptts = ptts.replace("$name2", "$name1") }
+    if (ptts.contains("$name4")) {
+    	ptts = ptts.replace("$name4", "$name3") }
+    if (ptts.contains("$name6")) {
+    	ptts = ptts.replace("$name6", "$name5") }
+        ptts = ptts.toLowerCase()
+        log.debug "ptts = = $ptts"
+             
              
              childApps.each {child ->
              	if (child.label.toLowerCase() == pintentName.toLowerCase()) { 
