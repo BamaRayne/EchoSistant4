@@ -111,9 +111,6 @@ def mIntent() {
         	href "spellings", title: "Do you have family members with names spelled a little differently?",
             image: "https://raw.githubusercontent.com/BamaRayne/SmartSuite/master/Icons/Strange.png"
             }
-        section() {
-//    		href url: getAppEndpointUrl("renderAwsCopyText"), style:"embedded", title:"View the Data shared with Developer", description: "Tap to view Data", required:false
-			}
         section ("") {
             href "mSecurity", title: "Smart Home Monitor Status Changes", description: mSecurityD(), state: mSecurityS(),
             image: "https://raw.githubusercontent.com/BamaRayne/Echosistant/master/smartapps/bamarayne/echosistant.src/Echosistant_Rest.png"
@@ -354,16 +351,6 @@ def getProfileList(){
 		return getChildApps()*.label
 }
 
-/************************************************************************************************************
-	 	HTML PAGE FOR VERSIONS
-************************************************************************************************************/
-def renderAwsCopyText() {
-    try {
-        String str = "Parent Version: " + release() + " Child App Version: " + child?.revision(text)
-        render contentType: "text/plain", data: str
-    } catch (ex) { log.error "renderAwsCopyText Exception:", ex }
-}
-//String getAppEndpointUrl(subPath)   { return "${apiServerUrl("/api/smartapps/installations/${app.id}${subPath ? "/${subPath}" : ""}?access_token=${state.accessToken}")}" }
 
 /************************************************************************************************************
 		Begining Process - Lambda via page b
@@ -778,63 +765,3 @@ def mSecurityD() {def text = "Tap here to configure settings"
     	else text = "Tap to Configure"
 		text}
 
-def baseUrl(path) {
-    return "https://community-installer-34dac.firebaseapp.com${path}"
-}
-
-def getLoginUrl() {
-    def r = URLEncoder.encode(getAppEndpointUrl("installStart"))
-    def theURL = "https://account.smartthings.com/login?redirect=${r}"
-    if(settings?.authAcctType == "samsung") { theURL = "https://account.smartthings.com/login/samsungaccount?redirect=${r}" }
-    return theURL
-}
-
-def installStartHtml() {
-    def randVerStr = "?=${now()}"
-    def html = """
-        <html lang="en">
-            <head>
-                <meta name="robots" content="noindex">
-                <link rel="stylesheet" type="text/css" href="${baseUrl('/content/css/main_mdb.min.css')}" />
-                <link rel="stylesheet" type="text/css" href="${baseUrl('/content/css/main_web.min.css')}" />
-                <script src="https://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
-                <script type="text/javascript">
-                    const serverUrl = '${apiServerUrl('')}';
-                    const homeUrl = '${getAppEndpointUrl('installStart')}';
-                    const loginUrl = '${getLoginUrl()}'
-                    const baseAppUrl = '${baseUrl('')}';
-                    const appVersion = '${release()}';
-                    const hashedUuid = '${generateLocationHash()}';
-                </script>
-            </head>
-            <body>
-                <div id="bodyDiv"></div>
-                <script type="text/javascript" src="${baseUrl('/content/js/awesome_file.js')}${randVerStr}"></script>
-            </body>
-        </html>"""
-    render contentType: "text/html", data: html
-}
-def generateLocationHash() {
-    def s = location?.getId()
-    MessageDigest digest = MessageDigest.getInstance("MD5")
-    digest.update(s.bytes);
-    new BigInteger(1, digest.digest()).toString(16).padLeft(32, '0') 
-}
-
-def getAccessToken() {
-    try {
-        if(!atomicState?.accessToken) {
-            log.error "SmartThings Access Token Not Found... Creating a New One!!!"
-            atomicState?.accessToken = createAccessToken()
-        } else { return true }
-    }
-    catch (ex) {
-        log.error "Error: OAuth is not Enabled for ${app?.label}!.  Please click remove and Enable Oauth under the SmartApp App Settings in the IDE"
-        return false
-    }
-}
-
-def gitBranch()         { return "master" }
-def getAppImg(file)	    { return "https://cdn.rawgit.com/tonesto7/st-community-installer/${gitBranch()}/images/$file" }
-def getAppVideo(file)	{ return "https://cdn.rawgit.com/tonesto7/st-community-installer/${gitBranch()}/videos/$file" }
-def getAppEndpointUrl(subPath)	{ return "${apiServerUrl("/api/smartapps/installations/${app.id}${subPath ? "/${subPath}" : ""}?access_token=${atomicState.accessToken}")}" }

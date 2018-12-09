@@ -2,6 +2,7 @@
 * EchoSistant Rooms Logic Blocks
 *
 *
+*	12/09/2018		Version:2.0 R.0.5.1a	Bug fix in Humidity Outdoors variable for reports
 *	12/07/2018		Version:2.0 R.0.5.1		Added new variables: &shm, &mode, &tempIn, &tempOut, &humIn, &humOut, &fans
 *	12/05/2018		Version:2.0 R.0.5.0		Name change and redeployed as grandchild app to EchoSistant
 *	09/13/2018		Version:2.0 R.0.4.3		Added Echo Devices as output devices
@@ -88,7 +89,7 @@ definition(
 	iconX3Url		: "https://raw.githubusercontent.com/jasonrwise77/My-SmartThings/master/LogicRulz%20Icons/LogicRulz2x.png")
 /**********************************************************************************************************************************************/
 private def version() { 
-    	def text = "Version 2.0, Revision 0.5.1"
+    	def text = "Version 2.0, Revision 0.5.1a"
         //LogicBlocks Ver 2.0 / R.0.5.0, Release date: 12/05/2018, Initial App Release Date: 04/23/2018" 
 	}
 
@@ -3723,9 +3724,9 @@ private getVar(var) {
             }
         }
     if (var == "humOut"){    
-        if(vhumOut){
+        if(vHumOut){
             def total = 0
-            vhumOut.each {total += it.currentValue("humidity")}
+            vHumOut.each {total += it.currentValue("humidity")}
             int avgT = total as Integer
             result = Math.round(total/vHumIn?.size()) + " percent"
             return stripBrackets(result ? " $result " : "")
