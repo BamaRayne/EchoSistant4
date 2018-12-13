@@ -2,6 +2,7 @@
 * EchoSistant Rooms Logic Blocks
 *
 *
+*	12/13/2018		Version:2.0 R.0.5.1b	Another humidity outdoors bug fix
 *	12/09/2018		Version:2.0 R.0.5.1a	Bug fix in Humidity Outdoors variable for reports
 *	12/07/2018		Version:2.0 R.0.5.1		Added new variables: &shm, &mode, &tempIn, &tempOut, &humIn, &humOut, &fans
 *	12/05/2018		Version:2.0 R.0.5.0		Name change and redeployed as grandchild app to EchoSistant
@@ -89,7 +90,7 @@ definition(
 	iconX3Url		: "https://raw.githubusercontent.com/jasonrwise77/My-SmartThings/master/LogicRulz%20Icons/LogicRulz2x.png")
 /**********************************************************************************************************************************************/
 private def version() { 
-    	def text = "Version 2.0, Revision 0.5.1a"
+    	def text = "Version 2.0, Revision 0.5.1b"
         //LogicBlocks Ver 2.0 / R.0.5.0, Release date: 12/05/2018, Initial App Release Date: 04/23/2018" 
 	}
 
@@ -230,7 +231,7 @@ def eventsPage() {
         }
         if(tSchedule == "Recurring"){
             section("Recurring", hideable:true) {                 
-                input "frequency", "enum", title: "Choose frequency", submitOnChange: true, required: fale, 
+                input "frequency", "enum", title: "Choose frequency", submitOnChange: true, required: false, 
                     options: ["Minutes", "Hourly", "Daily", "Weekly", "Monthly", "Yearly"]
                 if(frequency == "Minutes"){
                     input "xMinutes", "number", title: "Every X minute(s) - maximum 60", range: "1..59", submitOnChange: true, required: false
@@ -319,7 +320,7 @@ def eventsPage() {
             	if (tContactDoor) {
                 input "tContactDoorCmd", "enum", title: "are...", options: ["open":"opened", "closed":"closed"], multiple: false, required: true, submitOnChange: true
                 if (tContactDoor.size() > 1) {
-                    input "tContactDoorAll", "bool", title: "ALLdoors to be $tContactDoorCmd.", required: false, default: false, submitOnChange: true
+                    input "tContactDoorAll", "bool", title: "ALLdoors to be $tContactDoorCmd.", required: false, defaultValue: false, submitOnChange: true
                 	}
             	}
             }    
@@ -328,7 +329,7 @@ def eventsPage() {
             	if (tContactWindow) {
                 input "tContactWindowCmd", "enum", title: "are...", options: ["open":"opened", "closed":"closed"], multiple: false, required: true, submitOnChange: true
                 if (tContactWindow.size() > 1) {
-                    input "tContactWindowAll", "bool", title: "ALL windows to be $tContactWindowCmd.", required: false, default: false, submitOnChange: true
+                    input "tContactWindowAll", "bool", title: "ALL windows to be $tContactWindowCmd.", required: false, defaultValue: false, submitOnChange: true
                 	}
             	}
             }    
@@ -337,7 +338,7 @@ def eventsPage() {
             	if (tContact) {
                 input "tContactCmd", "enum", title: "are...", options: ["open":"opened", "closed":"closed"], multiple: false, required: true, submitOnChange: true
             	if (tContact.size() > 1) {
-                    input "tContactAll", "bool", title: "ALL contact sensors to be $tContactCmd.", required: false, default: false, submitOnChange: true
+                    input "tContactAll", "bool", title: "ALL contact sensors to be $tContactCmd.", required: false, defaultValue: false, submitOnChange: true
                 	}
             	}
             }
@@ -348,7 +349,7 @@ def eventsPage() {
             if (tLocks) {
                 input "tLocksCmd", "enum", title: "are...", options:["locked":"locked", "unlocked":"unlocked"], multiple: false, required: true, submitOnChange:true
                 if (tLocks.size() > 1) {
-                    input "tLocksAll", "bool", title: "ALL locks to be $tLocksCmd.", required: false, default: false, submitOnChange: true
+                    input "tLocksAll", "bool", title: "ALL locks to be $tLocksCmd.", required: false, defaultValue: false, submitOnChange: true
                 	}
                 }
             }
@@ -374,20 +375,20 @@ def eventsPage() {
                 if (tTempRead == "above") {
                 	input "tempHigh", "number", title: "a temperature of...", required: true, submitOnChange: true
                     }
-                if (tTempRead) input "tempOnce", "bool", title: "Perform actions only once when true", required: false, default: false, submitOnChange: true
+                if (tTempRead) input "tempOnce", "bool", title: "Perform actions only once when true", required: false, defaultValue: false, submitOnChange: true
         	input "tFeelsLike", "capability.relativeHumidityMeasurement", title: "How hot/cold it 'Feels'", required: false, multiple: true, submitOnChange: true
             input "tWind", "capability.sensor", title: "Wind Speed", multiple: true, required: false, submitOnChange: true
             	if (tWind) input "tWindLevel", "enum", title: "Activate when Wind Speed is...", options: ["above", "below"], required: false, submitOnChange: true            
             	if (tWind) input "tWindSpeed", "number", title: "Wind Speed Level...", required: true, description: "mph", submitOnChange: true            
-            	if (tWind) input "windOnce", "bool", title: "Perform actions only once when true", required: false, default: false, submitOnChange: true
+            	if (tWind) input "windOnce", "bool", title: "Perform actions only once when true", required: false, defaultValue: false, submitOnChange: true
          	input "tRain", "capability.sensor", title: "Rain Accumulation", multiple: true, required: false, submitOnChange: true
-            	if (tRain) input "tRainAction", "enum", title: "Activate when the Rain...", options: ["begins", "ends", "begins and ends"], required: false, default: true, submitOnChange: true            
+            	if (tRain) input "tRainAction", "enum", title: "Activate when the Rain...", options: ["begins", "ends", "begins and ends"], required: false, defaultValue: true, submitOnChange: true            
             		if (tRainAction == "begins" || tRainAction == "begins and ends") { input "rainStartMsg", "text", title: "Send this message when it begins to rain" }
             		if (tRainAction == "ends" || tRainAction == "begins and ends") { input "rainStopMsg", "text", title: "Send this message when it stops raining" }
             input "tHumidity", "capability.relativeHumidityMeasurement", title: "Relative Humidity", required: false, submitOnChange: true
             	if (tHumidity) input "tHumidityLevel", "enum", title: "Activate when Relative Humidity is...", options: ["above", "below"], required: false, submitOnChange: true            
             	if (tHumidity) input "tHumidityPercent", "number", title: "Relative Humidity Level...", required: true, description: "percent", submitOnChange: true            
-            	if (tHumidity) input "humOnce", "bool", title: "Perform this check only once", required: false, default: false, submitOnChange: true
+            	if (tHumidity) input "humOnce", "bool", title: "Perform this check only once", required: false, defaultValue: false, submitOnChange: true
            	input "tWater", "capability.waterSensor", title: "Water/Moisture Sensors", required: false, multiple: true, submitOnChange: true
                 if (tWater) input "tWaterStatus", "enum", title: "Activate when state changes to...", options: ["wet", "dry", "both"], required: false		
          	input "tSmoke", "capability.smokeDetector", title: "Smoke Detectors", required: false, multiple: true, submitOnChange: true
@@ -395,11 +396,11 @@ def eventsPage() {
           	input "myCO2", "capability.carbonDioxideMeasurement", title: "Carbon Dioxide (CO2)", required: false, multiple: true, submitOnChange: true
                 if (myCO2) input "myCO2S", "enum", title: "Activate when CO2 is...", options: ["above", "below"], required: false, submitOnChange: true            
                 if (myCO2S) input "CO2", "number", title: "Carbon Dioxide Level...", required: true, description: "number", submitOnChange: true              
-				if (myCO2S) input "CO2Once", "bool", title: "Perform this check only once", required: false, default: false, submitOnChange: true
+				if (myCO2S) input "CO2Once", "bool", title: "Perform this check only once", required: false, defaultValue: false, submitOnChange: true
          	input "tLux", "capability.illuminanceMeasurement", title: "Lux Level", required: false, submitOnChange: true
             	if (tLux) input "tLuxLow", "number", title: "A low lux level of...", required: true, submitOnChange: true
                 if (tLux) input "tLuxHigh", "number", title: "and a high lux level of...", required: true, submitOnChange: true
-				if (tLux) input "luxOnce", "bool", title: "Perform this check only once", required: false, default: false, submitOnChange: true
+				if (tLux) input "luxOnce", "bool", title: "Perform this check only once", required: false, defaultValue: false, submitOnChange: true
                 }
             }
 		}
@@ -537,7 +538,7 @@ def actions() {
                     input "pendDelayOff", "number", title: "Delay turning off by this many seconds", required: false, submitOnChange: true
                 }
                 if (aPendSwitchesCmd && aPendSwitches) {
-                    input "pendAll", "bool", title: "All contact/motion sensors inactive, and all switces off", required: false, default: true, submitOnChange: true
+                    input "pendAll", "bool", title: "All contact/motion sensors inactive, and all switces off", required: false, defaultValue: true, submitOnChange: true
                 	}
                 }
             }
@@ -545,12 +546,12 @@ def actions() {
                 input "aSwitchesOn", "capability.switch", title: "These switches will delay turning ON (with optional pending cancel)", multiple: true, required: false, submitOnChange: true
                 if (aSwitchesOn) {
                     input "aSwitchesOnDelay", "number", title: "...by this many seconds", required: true, defaultValue: 30, submitOnChange: true
-                    if (aSwitchesOn) input "aSwitchesOnPend", "bool", title: "activate for a pending state change cancel", default: false, required: false
+                    if (aSwitchesOn) input "aSwitchesOnPend", "bool", title: "activate for a pending state change cancel", defaultValue: false, required: false
                 }
                 input "aSwitchesOff", "capability.switch", title: "These switches will delay turning OFF (with optional pending cancel", multiple: true, required: false, submitOnChange: true
                 if (aSwitchesOff) {
                     input "aSwitchesOffDelay", "number", title: "...by this many seconds", required: true, defaultValue: 30, submitOnChange: true
-                    if (aSwitchesOff) input "aSwitchesOffPend", "bool", title: "activate for a pending state change cancel", default: false, required: false
+                    if (aSwitchesOff) input "aSwitchesOffPend", "bool", title: "activate for a pending state change cancel", defaultValue: false, required: false
                 }
 				if (aSwitchesOn && aSwitchesOff) paragraph "***Warning*** If using the same switches for both delay on and delay off, ensure that your " +
                 "delay off time is the delay you want INCLUDING the delay on time. \n" +
@@ -565,14 +566,14 @@ def actions() {
                 if (aSwitches) {
                     input "aSwitchesCmd", "enum", title: "...will...", options:["on":"turn on","off":"turn off","toggle":"toggle"], multiple: false, required: false, submitOnChange:true
                     if (aSwitchesCmd=="on") {  
-                        input "ContactOff", "bool", title: "Turn off when the selected event changes back?", default: false, submitOnChange: true
+                        input "ContactOff", "bool", title: "Turn off when the selected event changes back?", defaultValue: false, submitOnChange: true
                     }
                     if (aSwitchesCmd=="off") { 
-                        input "ContactOff", "bool", title: "Turn on when the selected event changes back?", default: false, submitOnChange: true
+                        input "ContactOff", "bool", title: "Turn on when the selected event changes back?", defaultValue: false, submitOnChange: true
                     }
                     if (aSwitchesCmd && ContactOff) {
                         input "ContactOffDelay", "number", title: "Delay this action by how long?", defaultValue: 0, submitOnChange: true
-                        if (ContactOffDelay) input "aSwitchesCancel", "bool", title: "Activate for a pending cancellation (Only if Motion is the Execution Event)", default: false, required: true
+                        if (ContactOffDelay) input "aSwitchesCancel", "bool", title: "Activate for a pending cancellation (Only if Motion is the Execution Event)", defaultValue: false, required: true
                     	}
                     }
                 }
@@ -661,11 +662,11 @@ def actions() {
                 input "aFansCmd", "enum", title: "...will...", options:["on":"turn on","off":"turn off"], multiple: false, required: false, submitOnChange:true
                 if (aFansCmd=="on") {
                     input "aFansDelayOn", "number", title: "Delay turning on by this many seconds", defaultValue: 0, submitOnChange:true
-                	if (aFansDelayOn) input "aFansPendOn", "bool", title: "Activate for pending state change cancellation", required: false, default: false
+                	if (aFansDelayOn) input "aFansPendOn", "bool", title: "Activate for pending state change cancellation", required: false, defaultValue: false
                 }
                 if (aFansCmd=="off") {
                     input "aFansDelayOff", "number", title: "Delay turning off by this many seconds", defaultValue: 0, submitOnChange:true
-                	if (aFansDelayOff) input "aFansPendOff", "bool", title: "Activate for pending state change cancellation", required: false, default: false
+                	if (aFansDelayOff) input "aFansPendOff", "bool", title: "Activate for pending state change cancellation", required: false, defaultValue: false
                     }
             }
         }
@@ -763,7 +764,7 @@ def actions() {
     	section("Mode, SHM, SmartThings Routines, & Logic Blockz", hideable: true, hidden: false){
             input "tSelf", "enum", title: "Perform the actions of these Logic Blokz", options: getRoutines(), multiple: true, required: false, submitOnChange: true
             	if (tSelf) input "tSelfDelay", "number", title: "Delay running by this number of seconds", defaultValue: 0, required: false, submitOnChange: true
-            		if (tSelfDelay) input "tSelfPend", "bool", title: "Activate for pending cancellation", default: false, required: false, submitOnChange: true
+            		if (tSelfDelay) input "tSelfPend", "bool", title: "Activate for pending cancellation", defaultValue: false, required: false, submitOnChange: true
             input "remindRProfile", "enum", title: "Execute this RemindR Profile...", options:  parent.listRemindRProfiles(), multiple: false, required: false
         	
             if(!tMode){
@@ -864,10 +865,10 @@ def pSend(){
             input "vCO2", "capability.carbonDioxideMeasurement", title: "Carbon Dioxide (CO2)", required: false, multiple: true, submitOnChange: true
 			}        	
         section ("Audio Output Devices"){
-        	input "report", "bool", title: "Activate to play the message above as the Alexa response to running this Logic Block", default: true, submitOnChange: true
-        	input "speakDisable", "bool", title: "Activate this toggle to configure SMS/Audio/Push messages", default: false, submitOnChange: true
+        	input "report", "bool", title: "Activate to play the message above as the Alexa response to running this Logic Block", defaultValue: true, submitOnChange: true
+        	input "speakDisable", "bool", title: "Activate this toggle to configure SMS/Audio/Push messages", defaultValue: false, submitOnChange: true
             if (speakDisable==true) {
-            input "smc", "bool", title: "Send the message to Smart Message Control", default: false, submitOnChange: true
+            input "smc", "bool", title: "Send the message to Smart Message Control", defaultValue: false, submitOnChange: true
             input "synthDevice", "capability.speechSynthesis", title: "Speech Synthesis Devices", multiple: true, required: false
         	}    
         }    
@@ -3728,7 +3729,7 @@ private getVar(var) {
             def total = 0
             vHumOut.each {total += it.currentValue("humidity")}
             int avgT = total as Integer
-            result = Math.round(total/vHumIn?.size()) + " percent"
+            result = Math.round(total/vHumOut?.size()) + " percent"
             return stripBrackets(result ? " $result " : "")
             }
         }
