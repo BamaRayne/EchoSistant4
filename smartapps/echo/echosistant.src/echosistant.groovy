@@ -8,6 +8,7 @@
  
  ************************************ FOR INTERNAL USE ONLY ******************************************************
 
+ *		18 December 2018	Version: 4.6 R.0.0.2e	Bug fix in SHM announcements and addition of optional restore volume on Alexa Devices, UI updates	
  *		18 December 2018	Version: 4.6 R.0.0.2d	Bug fix
  *		16 December 2018	Version: 4.6 R.0.0.2C	Addidtion of system defaults page
  *		06 December 2018	Version: 4.6 R.0.0.2b	Small changes and updates
@@ -59,7 +60,7 @@ private def textVersion() {
 	def text = "1.0"
 }
 private release() {
-    def text = "Version 4.6, Revision 0.0.2d"
+    def text = "Version 4.6, Revision 0.0.2e"
 }
 /**********************************************************************************************************************************************/
 preferences {   
@@ -90,10 +91,7 @@ def mainParentPage() {
             href "mIntent", title: "Configure System Settings", description: mIntentD(), state: mIntentS(), 
             image: "https://raw.githubusercontent.com/BamaRayne/Echosistant/master/smartapps/bamarayne/echosistant.src/Echosistant_Config.png"
         }
-//        section ("") {
-//        	href "echoDevicePage", title: "Configure your Echo Devices"
-//            }
-        section ("") {    
+        section ("DashBoard") {    
             paragraph "The Current Mode is: ${location.currentMode}"
             paragraph "Smart Home Monitor is set to: " + getSHMStatus()
         }
@@ -106,16 +104,6 @@ def mainParentPage() {
         }
 	}
 }
-
-page name: "echoDevices"
-    def echoDevices() {
-    	dynamicPage (name: "echoDevices", title: "View your Echo Devices below", install: true, uninstall: true) {
-    		section(""){
-			def result = echoDeviceList(list)
-            paragraph "${result}"
-            }
-		}
-    }    
 
 // UNINSTALL PAGE
 page name: "uninstallPage"
@@ -130,21 +118,21 @@ page name: "mIntent"
 def mIntent() {
     dynamicPage (name: "mIntent", title: "Settings and Support", install: false, uninstall: false) {
         section() {
-        	href "spellings", title: "Do you have family members with names spelled a little differently?",
-            image: "https://raw.githubusercontent.com/BamaRayne/SmartSuite/master/Icons/Strange.png"
+        	href "spellings", title: "Do you have family members with names spelled a little differently?", description: spellingsD(), state: spellingsS(),
+            image: "https://raw.githubusercontent.com/BamaRayne/EchoSistant4/master/Icons/Strange.png"
             }
-        section ("System and Device Control Defaults") {
-            href "mDefaults", title: "Change Defaults", description: mDefaultsD(), state: mDefaultsS(),
-            image: "https://raw.githubusercontent.com/BamaRayne/SmartSuite/master/Icons/Default.png"
-			}
         section ("") {
             href "mSecurity", title: "Smart Home Monitor Status Changes", description: mSecurityD(), state: mSecurityS(),
-            image: "https://raw.githubusercontent.com/BamaRayne/Echosistant/master/smartapps/bamarayne/echosistant.src/Echosistant_Rest.png"
+            image: "https://raw.githubusercontent.com/BamaRayne/EchoSistant4/master/Icons/SHM_Monitor.png"
         }
         section ("") {
             href "mSupport", title: "Install and Support Information", description: mSupportD(), state: mSupportS(),
-            image: "https://raw.githubusercontent.com/BamaRayne/Echosistant/master/smartapps/bamarayne/echosistant.src/Echosistant_About.png"
+            image: "https://raw.githubusercontent.com/BamaRayne/EchoSistant4/master/Icons/Install_Support.png"
         }
+        section ("") {
+            href "mDefaults", title: "System and Device Control Defaults", description: mDefaultsD(), state: mDefaultsS(),
+            image: "https://raw.githubusercontent.com/BamaRayne/EchoSistant4/master/Icons/Default.png"
+		}
     }
 }
 
@@ -153,21 +141,30 @@ def mSecurity(){
     dynamicPage(name: "mSecurity", title: "",install: false, uninstall: false) {
 		section ("Smart Home Monitor Status Change Feedback",hideable: true){
             input "fSecFeed", "bool", title: "Activate SHM status change announcements.", default: false, submitOnChange: true
+            }
             if (fSecFeed) {
-        	input "shmEchoDevice", "device.echoSpeaksDevice", title: "Announce Changes on these Amazon Alexa Devices", multiple: true, required: false
-            	input "eVolume", "number", title: "Set the volume", description: "0-100 (default value = 30)", required: false, defaultValue: 30
-            	if (eVolume) {
-                	input "svr", "bool", title: "Do you want to restore the volume to preannouncement levels?", required: false, default:faluse, submitOnChange: true
+        section ("Alexa Devices") {    
+        	input "shmEchoDevice", "device.echoSpeaksDevice", title: "Announce Changes on these Amazon Alexa Devices", multiple: true, required: false, submitOnChange: true
+            	if (shmEchoDevice) {
+                input "eVolume", "number", title: "Set the volume", description: "0-100 (default value = 30)", required: false, defaultValue: 30, submitOnChange: true
+            	input "svr", "bool", title: "Do you want to restore the volume to preannouncement levels?", required: false, default:faluse, submitOnChange: true
+                if (svr) {
+                	input "restoreVol", "number", title: "Restore volume to this level (default is 30%)", required: false, defaultValue: 30, submitOnChange: true
                     }
-
+				}
+            }
+        section ("Other Audio Devices") {            
                 input "shmSynthDevice", "capability.speechSynthesis", title: "Announce Changes On these Speech Synthesis Type Devices", multiple: true, required: false
                 input "shmSonosDevice", "capability.musicPlayer", title: "Announce Changes On these Sonos Type Devices", required: false, multiple: true, submitOnChange: true    
-            }
+            
             if (shmSonosDevice) {
-                input "volume", "number", title: "Temporarily change volume", description: "0-100%", required: false
+                input "volume", "number", title: "Temporarily change volume", description: "0-100%", required: false, defaultValue: 30
+            	}
             }
+        section ("Smart Message Control") {    
             if (fSecFeed) {
             	input "shmSmc", "bool", title: "Announce via Smart Message Control App", default: false, submitOnChange: true
+            	}
             }
         }
     }
@@ -187,12 +184,12 @@ def mDefaults(){
             input "cLow", "number", title: "Alexa Adjusts Low Level to 33% by default", defaultValue: 33, required: false
             input "cFanLevel", "number", title: "Alexa Automatically Adjusts Ceiling Fans by using a scale of 1-100 (default is +/-33%)", defaultValue: 33, required: false
         }
-*/        section ("Alexa Voice Settings") {            
+*/       section ("Alexa Voice Settings") {            
             input "pDisableContCmds", "bool", title: "Disable Conversation (Alexa no longer prompts for additional commands except for 'try again' if an error ocurs)?", required: false, defaultValue: false
             input "pEnableMuteAlexa", "bool", title: "Disable Feedback (Silence Alexa - it no longer provides any responses)?", required: false, defaultValue: false
             input "pUseShort", "bool", title: "Use Short Alexa Answers (Alexa provides quick answers)?", required: false, defaultValue: false
         }
-/*        section ("HVAC Filters Replacement Reminders", hideWhenEmpty: true, hideable: true, hidden: false) {
+ /*       section ("HVAC Filters Replacement Reminders", hideWhenEmpty: true, hideable: true, hidden: false) {
             input "cFilterReplacement", "number", title: "Alexa Automatically Schedules HVAC Filter Replacement in this number of days (default is 90 days)", defaultValue: 90, required: false                        
             input "cFilterSynthDevice", "capability.speechSynthesis", title: "Send Audio Notification when due, to this Speech Synthesis Type Device(s)", multiple: true, required: false
             input "cFilterSonosDevice", "capability.musicPlayer", title: "Send Audio Notification when due, to this Sonos Type Device(s)", required: false, multiple: true   
@@ -700,20 +697,22 @@ def processTts(tts) {
 // ALARM STATUS CHANGE FEEDBACK TO SPEAKERS
 def alarmStatusHandler(evt) {
     if (fSecFeed) {
+    //	def String = message
         def curEvtValue = evt.value
         log.info "Smart Home Monitor status changed to: ${curEvtValue}"
         if (shmSynthDevice || shmSonosDevice || shmSmc || shmEchoDevice) {
-            if (evt.value == "armAway") {
+            if (evt.value == "away") {
                 sendAwayCommand
                 def message = "Attention, The alarm system is now set to armed away"
-                if (echoDevice) {
+                if (shmEchoDevice) {
                     settings.shmEchoDevice.each { spk->
                         if(svr) {
                             int eVolume = eVolume as Integer
-                            spk.setVolumeSpeakAndRestore(eVolume, String)
+                            int volRestore = volRestore as Integer
+                            spk.setVolumeSpeakAndRestore(eVolume, message, volRestore)
                         }
                         else{
-                            spk.setVolumeAndSpeak(eVolume, String)
+                            spk.setVolumeAndSpeak(eVolume, message)
                         }
                     }
                 }     
@@ -724,14 +723,15 @@ def alarmStatusHandler(evt) {
             }
             else if (evt.value == "stay") {
                 def message = "Attention, The alarm system is now set to armed stay"
-                if (echoDevice) {
+                if (shmEchoDevice) {
                     settings.shmEchoDevice.each { spk->
                         if(svr) {
                             int eVolume = eVolume as Integer
-                            spk.setVolumeSpeakAndRestore(eVolume, String)
+                            int volRestore = volRestore as Integer
+                            spk.setVolumeSpeakAndRestore(eVolume, message, volRestore)
                         }
                         else{
-                            spk.setVolumeAndSpeak(eVolume, String)
+                            spk.setVolumeAndSpeak(eVolume, message)
                         }
                     }
                 }     
@@ -742,14 +742,15 @@ def alarmStatusHandler(evt) {
             }
             else if(evt.value == "off") {
                 def message = "Attention, The alarm system has been disarmed"
-                if (echoDevice) {
+                if (shmEchoDevice) {
                     settings.shmEchoDevice.each { spk->
                         if(svr) {
                             int eVolume = eVolume as Integer
-                            spk.setVolumeSpeakAndRestore(eVolume, String)
+                            int volRestore = volRestore as Integer
+                            spk.setVolumeSpeakAndRestore(eVolume, message, volRestore)
                         }
                         else{
-                            spk.setVolumeAndSpeak(eVolume, String)
+                            spk.setVolumeAndSpeak(eVolume, message)
                         }
                     }
                 }     
@@ -836,15 +837,15 @@ def mSettingsD() {
 /** Install and Support Page **/
 def mSupportS() {
     def result = ""
-    if (notifyOn || securityOn) {
+    if (debug || trace) {
     	result = "complete"	
     }
     result
 }
 def mSupportD() {
-    def text = ""
-    if (notifyOn || securityOn) { 
-            text = ""
+    def text = "Tap here to View"
+    if (debug || trace) { 
+            text = "Configured"
     }
     text
 }
@@ -868,6 +869,15 @@ def mIntentD() {
     else text = "Tap here to Configure"
 	    text
 } 
+def spellingsS() {def result = ""
+    if (name1 || name3 || name5) {
+    	result = "complete"}
+   		result}
+def spellingsD() {def text = "Tap here to configure" 
+    if (name1 || name3 || name5) {
+    	text = "Configured"}
+    	else text = "Tap to Configure"
+		text}
 def mSecurityS() {def result = ""
     if (cMiscDev || cRoutines || uPIN_SHM || uPIN_Mode || fSecFeed || shmSynthDevice || shmSonosDevice || volume || resumePlaying) {
     	result = "complete"}

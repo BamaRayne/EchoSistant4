@@ -548,12 +548,6 @@ def pDeviceControl() {
 page name: "cDevices"
 def cDevices() {
     dynamicPage(name: "cDevices", title: "", install: false, uninstall: false) {
-        section (""){
-        paragraph "~~Control all groups by saying, 'Alexa, turn on/off the ~group name~ in the $app.label'"
-        paragraph "~~Control all devices by saying, 'Alexa, turn on/off the ~device name~ in the $app.label'"
-        paragraph "~~All devices CAN be selected in multiple sections"
-        paragraph "~~Compound Commands are available for Individual Devices ONLY! 'Alexa, turn on the corner light and turn on the ceiling fan in the $app.label'"
-        }
         section ("Location Modes"){
         	input "mMode", "enum", title: "Choose Modes to be used by this Room...", options: location.modes.name.sort(), multiple: true, required: false 
             }
