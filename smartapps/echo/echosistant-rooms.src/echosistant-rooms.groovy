@@ -1,6 +1,7 @@
 /* 
 * EchoSistant Rooms Profile - EchoSistant Add-on
 *
+*		12/18/2018		Version:4.6 R.0.2.2		Added color control to color group as well as individual device color control
 *		12/16/2018		Version:4.6 R.0.2.1		Bug fix in verbal command to reset queue of Alexa devices from Echo Speaks
 *		12/15/2018		Version:4.6 R.0.2.0		Several bug fixes in logic, improvements in individual device commands, and upgrades to more accurate command feedback
 *		12/10/2018		Version:4.6 R.0.1.9c	Bug fix for lights with strange names
@@ -66,7 +67,7 @@ private release() {
 	def text = "R.0.4.6"
 }
 private revision(text) {
-	text = "Version 4.6, Revision 0.2.1"
+	text = "Version 4.6, Revision 0.2.2"
     return text
     }
 /**********************************************************************************************************************************************/
@@ -571,6 +572,9 @@ def cDevices() {
         section ("Lights and Switches Groups"){
             input "gSwitches", "capability.switch", title: "Group Lights and Switches...", multiple: true, required: false
         }
+        section ("Color Lights and Bulbs"){
+            input "gHues", "capability.colorControl", title: "Group Colored Lights...", multiple: true, required: false
+		}
         section ("Ceiling Fans and Automations Groups"){
    			input "gDisable", "capability.switch", title: "Group Automation & Disable Switches (disable = off, enable = on)", multiple: true, required: false
             input "gFans", "capability.switch", title: "Fans and Ceiling Fans...", multiple: true, required: false
@@ -1618,6 +1622,53 @@ def deviceCmd(params, tts) {
         return outputTxt
     	}
     }
+
+                //Colored Lights
+            if (deviceType == "color") {
+            log.debug "We got to the color changer"
+                if (gHues?.size()>0) {
+                    gHues?.each { c ->
+                    	def cMatch = c.label.toLowerCase()
+                        if(tts.contains("${cMatch}")) {  // INDIVIDUAL LIGHTS ON/OFF
+                if (parent.trace) log.trace "Individual Color Bulb Match -> $cMatch"
+                        def hueSetVals
+                        tts = tts.replaceAll("\\b.*color \\b","").replace("set lights color to ", "").replace("set the lights to color ", "").replace("set color to ", "")
+                        tts = tts.replace("change the color to ", "").replace("change the lights to ", "").replace("change color to ", "").replace("change lights to ", "")
+                        tts = tts == "day light" ? "Daylight" : tts == "be light" ? "Daylight" : tts
+                        hueSetVals =  getColorName( tts , level)
+                        if (hueSetVals) {
+                            c?.setColor(hueSetVals)
+                            outputTxt =  "Ok, I am setting the $cMatch to the color " + tts
+                        }
+                        else {
+                            outputTxt =  "Sorry, but I wasn't able to change the color to " +  tts
+                            def pTryAgain = true
+                        }
+                        return outputTxt
+				    }
+                }
+                
+                if (tts.contains("lights")) {        
+                    // CHANGING COLORS
+                        def hueSetVals
+                        tts = tts.replace("set lights color to ", "").replace("set the lights to the color ", "").replace("set color to ", "")
+                        tts = tts.replace("change the color to ", "").replace("change the lights to ", "").replace("change color to ", "").replace("change lights to ", "")
+                        tts = tts == "day light" ? "Daylight" : tts == "be light" ? "Daylight" : tts
+                        hueSetVals =  getColorName( tts , level)
+                        if (hueSetVals) {
+                            gHues?.setColor(hueSetVals)
+                            outputTxt =  "Ok, changing your bulbs to " + tts
+                        }
+                        else {
+                            outputTxt =  "Sorry, I wasn't able to change the color to " +  tts
+                            def pTryAgain = true
+                        }
+                        return outputTxt
+                		}
+                    }
+				}
+                
+
 //tts.contains("light") || 
 	// INDIVIDUAL AND GROUPS OF LIGHTS, LAMPS, & SWITCHES AS WELL AS ALEXA FEELINGS COMMANDS
     if (deviceType == "light" || deviceType == "light1" || deviceType == "light2" || deviceType == "light3" || deviceType == "light4" ||
@@ -1969,7 +2020,7 @@ def deviceCmd(params, tts) {
                 }
                 else { 
                     outputTxt = "Sorry for the trouble, but in order for EchoSistant to be able to start where you left off, the last activity must be saved"
-                    ef pTryAgain = true
+                    def pTryAgain = true
                     return outputTxt
                 }
             }
@@ -2579,12 +2630,12 @@ private getCommand(text){
     text = text.toLowerCase()
     
 //LIGHT SWITCHES & CUSTOM GROUPS
-    if (gSwitches || gCustom1N || gCustom2N || gCustom3N || gCustom4N || gCustom5N){
+    if (gHues || gSwitches || gCustom1N || gCustom2N || gCustom3N || gCustom4N || gCustom5N){
         if (gSwitches) {
-            if (text.contains("set the ") && !text.contains("volume")) {  // DIMMERS, DIMMER GROUPS
+            if (text.contains("set the ") && !text.contains(" volume") && !text.contains(" color")) {  // DIMMERS, DIMMER GROUPS
         	command = "undefined"
             deviceType = "newLevel"
-        	}
+            }
             else {
             command = text.contains("turn on") ? "on" : text.contains("turn off") ? "off" : text.contains("switch on") ? "on" : text.contains("lights on") ? "on" : text.contains("lights off") ? "off" : text.contains("switch off") ? "off" : "undefined"
             if (command == "undefined") {
@@ -2659,6 +2710,7 @@ private getCommand(text){
             }
         }        
     }      
+
 //case "Dimmer Commands":
         if (!text.contains("volume") && (text.contains("decrease") ||text.contains("darker") || text.contains("too bright") || text.contains("dim") || text.contains("dimmer") || text.contains("turn down"))) {
             command = "decrease" 
@@ -2668,13 +2720,17 @@ private getCommand(text){
             command = "increase" 
             deviceType = "dimmer"
         }    
-        else if (text.startsWith("set the") && !text.contains("volume")) {  // DIMMERS, DIMMER GROUPS
+        else if (text.startsWith("set the") && !text.contains("volume") && !text.contains("color")) {  // DIMMERS, DIMMER GROUPS
         	command = "undefined"
             deviceType = "newLevel"
         }
         else if (text.contains("reset the queue")) { // RESETS THE QUEUE FOR ALEXA DEVICES
         	command = "reset"
             deviceType = "volume"
+        }
+        else if (text.contains("the color")) {  // COLOR CHANGING BULBS
+        	command = "colorChange"
+            deviceType = "color"
         }    
         else if (text.startsWith("set the volume")) {  // volume control for speakers & harmony
         	command = "newVolume"

@@ -8,6 +8,7 @@
  
  ************************************ FOR INTERNAL USE ONLY ******************************************************
 
+ *		18 December 2018	Version: 4.6 R.0.0.2d	Bug fix
  *		16 December 2018	Version: 4.6 R.0.0.2C	Addidtion of system defaults page
  *		06 December 2018	Version: 4.6 R.0.0.2b	Small changes and updates
  *		01 December 2018	Version: 4.6 R.0.0.2a	Moved donations to opening page
@@ -58,7 +59,7 @@ private def textVersion() {
 	def text = "1.0"
 }
 private release() {
-    def text = "Version 4.6, Revision 0.0.2c"
+    def text = "Version 4.6, Revision 0.0.2d"
 }
 /**********************************************************************************************************************************************/
 preferences {   
@@ -185,10 +186,6 @@ def mDefaults(){
             input "cMedium", "number", title: "Alexa Adjusts Medium Level to 66% by default", defaultValue: 66, required: false
             input "cLow", "number", title: "Alexa Adjusts Low Level to 33% by default", defaultValue: 33, required: false
             input "cFanLevel", "number", title: "Alexa Automatically Adjusts Ceiling Fans by using a scale of 1-100 (default is +/-33%)", defaultValue: 33, required: false
-        }
-        section ("Activity Defaults") {            
-            input "cLowBattery", "number", title: "Alexa Provides Low Battery Feedback when the Bettery Level falls below... (default is 25%)", defaultValue: 25, required: false
-            input "cInactiveDev", "number", title: "Alexa Provides Inactive Device Feedback when No Activity was detected for... (default is 24 hours) ", defaultValue: 24, required: false
         }
 */        section ("Alexa Voice Settings") {            
             input "pDisableContCmds", "bool", title: "Disable Conversation (Alexa no longer prompts for additional commands except for 'try again' if an error ocurs)?", required: false, defaultValue: false
@@ -388,22 +385,22 @@ def installed() {
 }
 def updated() { 
 	if (debug) log.debug "Updated with settings: ${settings}"
-    log.debug "AlexaJSON = ${atomicState.alexaJSON}"
-    log.debug "Alexa Devices = ${atomicState.alexaJSON.devices.accountName}"
+//    log.debug "AlexaJSON = ${atomicState.alexaJSON}"
+//    log.debug "Alexa Devices = ${atomicState.alexaJSON.devices.accountName}"
 
-    def alexaJSON = null
-    def deviceID = null
+//    def alexaJSON = null
+//    def deviceID = null
  //   def finalList = null
     
-    alexaJSON = "${atomicState.alexaJSON.devices.deviceAccountId}".split(",").each { deviceName ->
-    	log.trace "alexaDeviceName is: $deviceName"
+//    alexaJSON = "${atomicState.alexaJSON.devices.deviceAccountId}".split(",").each { deviceName ->
+//    	log.trace "alexaDeviceName is: $deviceName"
         
 //    deviceID = "${atomicState.alexaJSON.devices.deviceAccountId}".split(",").each { finalList ->
 //        log.trace "Alexa Device is: ${deviceName} : ${finalList}"
 //        }
-        }
+//        }
 
-log.debug "alexaJSON = $state.alexaJSON" //deviceAccountId  .accountName  atomicState.alexaJSON.devices.deviceAccountId
+//log.debug "alexaJSON = $state.alexaJSON" //deviceAccountId  .accountName  atomicState.alexaJSON.devices.deviceAccountId
 
 
 	unsubscribe()
@@ -670,8 +667,32 @@ def processTts(tts) {
             pintentName = state.event
 			return ["outputTxt":outputTxt, "pContCmds":pContCmds, "pShort":state.pShort, "pContCmdsR":pContCmdsR, "pTryAgain":pTryAgain, "pPIN":pPIN]              
     	}
-	
-
+/*    def newTts = ptts.split("and").each { t -> 
+    	ptts = t.toLowerCase() 
+         
+            if (!ptts.contains(" in the")) {
+             	def test = "$params.intentName"
+                test = test as String
+                def pintentName = "$test"
+                ptts = ptts.replaceAll("\\band.*\\b", "")
+                log.trace "the ptts is: $ptts"
+                log.trace "the pintentName is: $pintentName"
+				def data = [ptts:ptts, pintentName:pintentName] 
+           //     outputTxt = findChild(data)
+             	}
+             
+             if (ptts.contains(" in the")) {
+             	def test = ptts.replaceAll("\\b.*in the \\b","")
+                test = test as String
+                def pintentName = "$test"
+                ptts = ptts.replaceAll("\\bin the.*\\b", "")
+                log.trace "new ptts is: $ptts"
+                log.trace "new pintentName is: $pintentName"
+				def data = [ptts:ptts, pintentName:pintentName] 
+             //   findChild(data)
+                }*/
+                
+    
 
 /***********************************************************************************************************
 		SMART HOME MONITOR STATUS AND KEYPAD HANDLER
