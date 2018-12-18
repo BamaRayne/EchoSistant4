@@ -1629,10 +1629,10 @@ def deviceCmd(params, tts) {
                 if (gHues?.size()>0) {
                     gHues?.each { c ->
                     	def cMatch = c.label.toLowerCase()
-                        if(tts.contains("${cMatch}")) {  // INDIVIDUAL LIGHTS ON/OFF
+                        if(tts.contains("${cMatch}") && tts.contains("color")) {  // INDIVIDUAL LIGHTS ON/OFF
                 if (parent.trace) log.trace "Individual Color Bulb Match -> $cMatch"
                         def hueSetVals
-                        tts = tts.replaceAll("\\b.*color \\b","").replace("set lights color to ", "").replace("set the lights to color ", "").replace("set color to ", "")
+                        tts = tts.replaceAll("\\b.*color \\b","").replaceAll("\\b.*to \\b","").replace("set lights color to ", "").replace("set the lights to color ", "").replace("set color to ", "")
                         tts = tts.replace("change the color to ", "").replace("change the lights to ", "").replace("change color to ", "").replace("change lights to ", "")
                         tts = tts == "day light" ? "Daylight" : tts == "be light" ? "Daylight" : tts
                         hueSetVals =  getColorName( tts , level)
@@ -1648,12 +1648,12 @@ def deviceCmd(params, tts) {
 				    }
                 }
                 
-                if (tts.contains("lights")) {        
+                if (tts.contains("lights") || tts.contains("color")) {        
                     // CHANGING COLORS
                         def hueSetVals
-                        tts = tts.replace("set lights color to ", "").replace("set the lights to the color ", "").replace("set color to ", "")
-                        tts = tts.replace("change the color to ", "").replace("change the lights to ", "").replace("change color to ", "").replace("change lights to ", "")
+                        tts = tts.replaceAll("\\b.*color \\b","").replaceAll("\\b.*to \\b","")
                         tts = tts == "day light" ? "Daylight" : tts == "be light" ? "Daylight" : tts
+                        
                         hueSetVals =  getColorName( tts , level)
                         if (hueSetVals) {
                             gHues?.setColor(hueSetVals)
@@ -2728,7 +2728,7 @@ private getCommand(text){
         	command = "reset"
             deviceType = "volume"
         }
-        else if (text.contains("the color")) {  // COLOR CHANGING BULBS
+        else if (text.contains("color")) {  // COLOR CHANGING BULBS
         	command = "colorChange"
             deviceType = "color"
         }    
