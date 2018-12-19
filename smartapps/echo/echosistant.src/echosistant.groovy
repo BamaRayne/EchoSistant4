@@ -370,18 +370,20 @@ mappings {
     path("/renderAwsCopyText") { action: [GET: "renderAwsCopyText"] }
     }
 
+
 /************************************************************************************************************
 		Base Process
 ************************************************************************************************************/
 def textDonateLink() { "https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=HETW6WY6T2FSL&source=url" }
 def installed() {
-	if (debug) log.debug "Installed with settings: ${settings}"
+	if (debug) log.debug "Installed with settings: ${settings} "
     state.ParentRelease = release()
     //Reminders
     state.esEvent = [:]
 }
 def updated() { 
-	if (debug) log.debug "Updated with settings: ${settings}"
+	log.warn "-->  Parent App Version: " + release()
+    if (debug) log.debug "Updated with settings: ${settings}"
 //    log.debug "AlexaJSON = ${atomicState.alexaJSON}"
 //    log.debug "Alexa Devices = ${atomicState.alexaJSON.devices.accountName}"
 
@@ -605,7 +607,11 @@ def processTts(tts) {
     	ptts = ptts.replace("$name6", "$name5") }
         ptts = ptts.toLowerCase()
         log.debug "ptts = = $ptts"
-             
+
+             if (ptts.contains(" in the")) {
+             	ptts = ptts.replaceAll("\\bin the.*\\b","")
+            //    ptts = ptts.replaceAll("\\bin the.*\\b", "")
+			}
              childApps.each {child ->
              	if (child.label.toLowerCase() == pintentName.toLowerCase()) { 
                     if (debug) log.debug "Found a profile: '${pintentName}'"

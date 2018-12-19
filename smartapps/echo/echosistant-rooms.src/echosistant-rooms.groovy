@@ -1,6 +1,7 @@
 /* 
 * EchoSistant Rooms Profile - EchoSistant Add-on
 *
+*		12/19/2018		Version:4.6 R.0.2.3		Bug fix in resetting the queue of an Alexa device via Echo Speaks app and added feedback "are the automations on".
 *		12/18/2018		Version:4.6 R.0.2.2		Added color control to color group as well as individual device color control
 *		12/16/2018		Version:4.6 R.0.2.1		Bug fix in verbal command to reset queue of Alexa devices from Echo Speaks
 *		12/15/2018		Version:4.6 R.0.2.0		Several bug fixes in logic, improvements in individual device commands, and upgrades to more accurate command feedback
@@ -67,7 +68,8 @@ private release() {
 	def text = "R.0.4.6"
 }
 private revision(text) {
-	text = "Version 4.6, Revision 0.2.2"
+	text = "Version 4.6, Revision 0.2.3"
+    state.version = "${text}"
     return text
     }
 /**********************************************************************************************************************************************/
@@ -570,7 +572,7 @@ def cDevices() {
             input "gHues", "capability.colorControl", title: "Group Colored Lights...", multiple: true, required: false
 		}
         section ("Ceiling Fans and Automations Groups"){
-   			input "gDisable", "capability.switch", title: "Group Automation & Disable Switches (disable = off, enable = on)", multiple: true, required: false
+   			input "gDisable", "capability.switch", title: "Group Automation & Disable Switches (disable = off, enable = on)", multiple: false, required: false
             input "gFans", "capability.switch", title: "Fans and Ceiling Fans...", multiple: true, required: false
         }
         section ("Create Custom Groups") {
@@ -717,7 +719,8 @@ def installed() {
 }
 
 def updated() {
-    log.debug "Updated with settings: ${settings}, current app version: ${release()}"
+    log.debug "Updated with settings: ${settings}"
+    log.warn "-->  EchoSistant Rooms App Version: " + revision(text)
     state.ProfileRelease = "Profile: " + release()
     unsubscribe()
     initialize()
@@ -885,7 +888,22 @@ if (roomDevice != null) {
             if (parent.debug) log.debug "Alexa Device: What's playing: $outputTxt"
             return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
         }
-
+		// AUTOMATIONS ON OR OFF
+        if (tts.contains("are the automations") || tts.contains("are the automations active")) {
+        	gDisable?.each { d ->
+            def status = d.latestValue("switch")
+            log.debug "automations current value is: $status"
+            if ((tts.contains(" on") || ttsContains("active")) && status == "on") {
+            	outputTxt = "Yes, the automations are currently on in the $app.label"
+                }
+                else if (status == "off") {
+                	outputTxt = "No, the automations are currently off in the $app.label"
+                    }
+           }     
+            	
+        	return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
+        }
+            
 /*        def switches = ["lamp", "stove", "fridge", "washer", "dryer", "oven", "plug", "outlet", "TV", "automation", "fan", "bulb", "printer ", " light" ] 
         
         switches.each { item ->
@@ -1599,7 +1617,12 @@ def deviceCmd(params, tts) {
     def getCMD
     def command
     def mMatch = null
-
+	def pContCmdsR
+    
+    if (tts == "reset the q ") {
+    	tts = "reset the queue"
+        }
+    
     getCMD = getCommand(tts)
     deviceType = getCMD.deviceType
     command = getCMD.command
@@ -1611,12 +1634,20 @@ def deviceCmd(params, tts) {
     if (command == "undefined" || command == null) {
     if (deviceType == "light" || deviceType == "message" || (deviceType == null && command == null)) { //if ((!sonosDevice && !synthDevice)) {   
         state.lastTime = new Date(now()).format("h:mm aa, dd-MMMM-yyyy", location.timeZone)
-        outputTxt = ttsHandler(tts) 
-        def pContCmdsR = "profile"
-        return outputTxt
+        //outputTxt = ttsHandler(tts) 
+        ttsHandler(tts)
+        pContCmdsR = "profile"
+   //     return outputTxt
     	}
     }
 
+    // DISABLE SWITCHES
+    if (deviceType == "disable"){
+        gDisable?."${command}"()
+        outputTxt = "ok, I will $params.ptts in the $app.label" //outputTxt = "Ok, turning $command the automations in the $app.label"
+        pContCmdsR = "profile"
+        return outputTxt                                  
+    	}
                 //Colored Lights
             if (deviceType == "color") {
             log.debug "We got to the color changer"
@@ -1841,13 +1872,6 @@ def deviceCmd(params, tts) {
         return outputTxt
     }
     
-    // DISABLE SWITCHES
-    if (deviceType == "disable"){
-        gDisable?."${command}"()
-        outputTxt = "ok, I will $params.ptts" //outputTxt = "Ok, turning $command the automations in the $app.label"
-        return outputTxt                                  
-    }
-
     // INDIVIDUAL VENTS AND SHADES
     if (deviceType == "vent" || deviceType == "shade") {
         gVents?.each { m -> 
@@ -1911,11 +1935,12 @@ def deviceCmd(params, tts) {
                     outputTxt = "ok, I will $params.ptts" //outputTxt = "Ok, " + volText + " the " + deviceD.label
                     return outputTxt
                 }
-                if (command == "reset" && (tts.contains("queue") || tts == "reset the q" || tts == "reset the queue")) {
+                if (command == "reset" && (tts.contains("queue"))) {
         			sSpeaker.resetQueue()
-        			outputTxt = "ok, I will $params.ptts" //outputTxt = "Ok, I have reset the queue on the $sSpeaker"
+        			pContCmdsR = true
+                    outputTxt = "ok, I will $params.ptts"
         			return outputTxt
-    			}
+                    }
 				if (command == "increase") {
                     newLevel =  currLevel + newLevel
                     newLevel = newLevel < 0 ? 0 : newLevel >100 ? 100 : newLevel
@@ -2617,26 +2642,33 @@ private flashLights() {
 /******************************************************************************************************
 CUSTOM COMMANDS - CONTROL
 ******************************************************************************************************/
-private getCommand(text){
-	log.info "getCommand method activated with this text: $text "
+private getCommand(tts){
+	log.info "getCommand method activated with this tts: $tts "
     def String command = (String) null
     def String deviceType = (String) null
-    text = text.toLowerCase()
-    
+    tts = tts.toLowerCase()
+
+    if (tts == "reset the q") {
+    	tts = "reset the queue"
+        command = "reset"
+        deviceType = "volume"
+        }
+
+log.warn "tts has been changed to: $tts"
 //LIGHT SWITCHES & CUSTOM GROUPS
     if (gHues || gSwitches || gCustom1N || gCustom2N || gCustom3N || gCustom4N || gCustom5N){
         if (gSwitches) {
-            if (text.contains("set the ") && !text.contains(" volume") && !text.contains(" color")) {  // DIMMERS, DIMMER GROUPS
+            if (tts.contains("set the ") && !tts.contains(" volume") && !tts.contains(" color")) {  // DIMMERS, DIMMER GROUPS
         	command = "undefined"
             deviceType = "newLevel"
             }
             else {
-            command = text.contains("turn on") ? "on" : text.contains("turn off") ? "off" : text.contains("switch on") ? "on" : text.contains("lights on") ? "on" : text.contains("lights off") ? "off" : text.contains("switch off") ? "off" : "undefined"
+            command = tts.contains("turn on") ? "on" : tts.contains("turn off") ? "off" : tts.contains("switch on") ? "on" : tts.contains("lights on") ? "on" : tts.contains("lights off") ? "off" : tts.contains("switch off") ? "off" : "undefined"
             if (command == "undefined") {
-               	command = text.contains("darker") ? "decrease" : text.contains("decrease") ? "decrease" : text.contains("dim ") ? "decrease" : text.contains("dimmer") ? "decrease" : text.contains("lower") ? "decrease" :"undefined"
+               	command = tts.contains("darker") ? "decrease" : tts.contains("decrease") ? "decrease" : tts.contains("dim ") ? "decrease" : tts.contains("dimmer") ? "decrease" : tts.contains("lower") ? "decrease" :"undefined"
             	}
             if (command == "undefined") {
-                command = text.contains("raise") ? "increase" : text.contains("brighter")  ? "increase" : text.contains("increase") ? "increase" : text.contains("brighten") ? "increase" : "undefined"
+                command = tts.contains("raise") ? "increase" : tts.contains("brighter")  ? "increase" : tts.contains("increase") ? "increase" : tts.contains("brighten") ? "increase" : "undefined"
             	}
 			log.warn "command = $command"
             deviceType = "light"
@@ -2706,74 +2738,74 @@ private getCommand(text){
     }      
 
 //case "Dimmer Commands":
-        if (!text.contains("volume") && (text.contains("decrease") ||text.contains("darker") || text.contains("too bright") || text.contains("dim") || text.contains("dimmer") || text.contains("turn down"))) {
+        if (!tts.contains("volume") && (tts.contains("decrease") ||tts.contains("darker") || tts.contains("too bright") || tts.contains("dim") || tts.contains("dimmer") || tts.contains("turn down"))) {
             command = "decrease" 
             deviceType = "dimmer"
         }
-        else if (!text.contains("volume") && (text.contains("increase") || text.contains("not bright enough") || text.contains("brighter") || text.contains("too dark") || text.contains("turn up") ||text.contains("brighten"))) {
+        else if (!tts.contains("volume") && (tts.contains("increase") || tts.contains("not bright enough") || tts.contains("brighter") || tts.contains("too dark") || tts.contains("turn up") ||tts.contains("brighten"))) {
             command = "increase" 
             deviceType = "dimmer"
         }    
-        else if (text.startsWith("set the") && !text.contains("volume") && !text.contains("color")) {  // DIMMERS, DIMMER GROUPS
+        else if (tts.startsWith("set the") && !tts.contains("volume") && !tts.contains("color")) {  // DIMMERS, DIMMER GROUPS
         	command = "undefined"
             deviceType = "newLevel"
         }
-        else if (text.contains("reset the queue")) { // RESETS THE QUEUE FOR ALEXA DEVICES
+        else if (tts.contains("reset the queue") || tts.contains("reset the q ")) { // RESETS THE QUEUE FOR ALEXA DEVICES
         	command = "reset"
             deviceType = "volume"
         }
-        else if (text.contains("color")) {  // COLOR CHANGING BULBS
+        else if (tts.contains("color")) {  // COLOR CHANGING BULBS
         	command = "colorChange"
             deviceType = "color"
         }    
-        else if (text.startsWith("set the volume")) {  // volume control for speakers & harmony
+        else if (tts.startsWith("set the volume")) {  // volume control for speakers & harmony
         	command = "newVolume"
             deviceType = "volume"
         }
-        else if (text.contains("increase") && text.contains("volume")) {  // volume control for speakers & harmony
+        else if (tts.contains("increase") && tts.contains("volume")) {  // volume control for speakers & harmony
         	command = "increase"
             deviceType = "volume"
         }
-        else if (text.contains("decrease") && text.contains("volume")) {  // volume control for speakers & harmony
+        else if (tts.contains("decrease") && tts.contains("volume")) {  // volume control for speakers & harmony
         	command = "decrease"
             deviceType = "volume" 
         }
 
     //Virtual Presence Check In/Out
-    if (text?.contains ("checking in") || text?.contains ("checking out")) {
+    if (tts?.contains ("checking in") || tts?.contains ("checking out")) {
         deviceType = "virPres" 
         command = "checking" 
     }
     
     //Disable Switches
-    if (text=="stop the automations" || text?.startsWith("cut off") || text?.startsWith("disengage") || text?.startsWith("disable automation") || text?.startsWith("stop turning the") || text?.startsWith("kill the automation") || text?.contains("kill the sensor")){
+    if (tts=="stop the automations" || tts?.startsWith("cut off") || tts?.startsWith("disengage") || tts?.startsWith("disable automation") || tts?.startsWith("stop turning the") || tts?.startsWith("kill the automation") || tts?.contains("kill the sensor")){
         command = "off"
         deviceType = "disable"
     }
-    else if (text=="start the automations" || text?.startsWith("cut on") || text?.startsWith("engage") || text?.startsWith("start turning the") || text?.startsWith ("start the sensor")){
+    else if (tts=="start the automations" || tts?.startsWith("cut on") || tts?.startsWith("engage") || tts?.startsWith("start turning the") || tts?.startsWith ("start the sensor")){
         command = "on"
         deviceType = "disable" 
     }
     
     // Fans
-    if (text.startsWith("set the fan") || text.contains("set the fans") || text.contains("fans") || text.contains("set the speed") || text.contains("fan") || text.contains("cold") || text.contains("hot")) {
-        if (text.contains(" on ") || text.contains("start")) {
+    if (tts.startsWith("set the fan") || tts.contains("set the fans") || tts.contains("fans") || tts.contains("set the speed") || tts.contains("fan") || tts.contains("cold") || tts.contains("hot")) {
+        if (tts.contains(" on ") || tts.contains("start")) {
             command = "on" 
             deviceType = "fan"
         }
-        else if (text.contains(" off ") || text.contains("stop")) {
+        else if (tts.contains(" off ") || tts.contains("stop")) {
             command = "off" 
             deviceType = "fan"
         }
-        else if (text.contains("high") || text.contains("medium") || text.contains("low")) {
-            command = text?.contains("high") ? "high" : text?.contains("medium") ? "medium" : text?.contains("low") ? "low" : "undefined"
+        else if (tts.contains("high") || tts.contains("medium") || tts.contains("low")) {
+            command = tts?.contains("high") ? "high" : tts?.contains("medium") ? "medium" : tts?.contains("low") ? "low" : "undefined"
             deviceType = "fan"
         }
-        else if  (text.contains("slow down") || text.contains("too fast" ) || text.contains("turn down") || text.contains("decrease") || text.contains("too cold") || text.contains("it's cold") || text.contains("cold")) {
+        else if  (tts.contains("slow down") || tts.contains("too fast" ) || tts.contains("turn down") || tts.contains("decrease") || tts.contains("too cold") || tts.contains("it's cold") || tts.contains("cold")) {
             command = "decrease"
             deviceType = "fan" 
         }
-        else if  (text.contains("speed up") || text.contains("too slow") || text.contains("turn up") || text.contains("increase") || text.contains("too hot") || text.contains("it's hot") || text.contains("hot")) {
+        else if  (tts.contains("speed up") || tts.contains("too slow") || tts.contains("turn up") || tts.contains("increase") || tts.contains("too hot") || tts.contains("it's hot") || tts.contains("hot")) {
             command = "increase"
             deviceType = "fan" 
         }
@@ -2784,24 +2816,24 @@ private getCommand(text){
     }
 
     // Vents
-    if (text?.contains("vent")) {  
+    if (tts?.contains("vent")) {  
         if (text.contains("open")) {
             command = "on" 
             deviceType = "vent"
         }
-        if (text.contains("close")) {
+        if (tts.contains("close")) {
             command = "off" 
             deviceType = "vent" 
         }
     }
     
     // Doors
-    if (text?.contains("door")) {
-        if (text.contains("open")) {
+    if (tts?.contains("door")) {
+        if (tts.contains("open")) {
             command = "open" 
             deviceType = "door"
         }
-        else if (text.contains("close")) {
+        else if (tts.contains("close")) {
             command = "close" 
             deviceType = "door" 
         }
@@ -2812,41 +2844,41 @@ private getCommand(text){
     }    
 
     // Locks
-    if (text?.contains("lock")) {
-        if (text.contains("unlocked")) {
+    if (tts?.contains("lock")) {
+        if (tts.contains("unlocked")) {
             command = "unlocked" 
             deviceType = "locks"
         }
-        if (text.contains("locked")) {
+        if (tts.contains("locked")) {
             command = "locked" 
             deviceType = "locks"  
         }
     }    
     
     // Shades
-    if (text?.contains("shade") || text?.contains("blinds") || text?.contains("curtains") ) {  
-        if (text.contains("open")) {
+    if (tts?.contains("shade") || tts?.contains("blinds") || tts?.contains("curtains") ) {  
+        if (tts.contains("open")) {
             command = "open" 
             deviceType = "shade"
         }
-        else if (text.contains("closed")) {
+        else if (tts.contains("closed")) {
             command = "closed"
             deviceType = "shade"
         }    
-        else if (text.contains("close")) {
+        else if (tts.contains("close")) {
             command = "close" 
             deviceType = "shade"
         }
     } 
     
     //Harmony
-    if (text?.contains("tv")) {
-        if  (text.contains("start") || text.startsWith("turn on") || text.contains("switch to") || text.contains("on")){
+    if (tts?.contains("tv")) {
+        if  (tts.contains("start") || tts.startsWith("turn on") || tts.contains("switch to") || tts.contains("on")){
             command = "startActivity"
             deviceType = "tv"
             log.info "Harmony start activity control"
         }
-        else if  (text.contains("stop") || text.startsWith("turn off") || text.contains("switch off") || text.contains("off")){
+        else if  (tts.contains("stop") || tts.startsWith("turn off") || tts.contains("switch off") || tts.contains("off")){
             command = "activityoff"
             deviceType = "tv"
         }
@@ -2858,9 +2890,9 @@ private getCommand(text){
     }
 
 //Task Tracker
-    if (text?.startsWith("The".toLowerCase()) || text?.startsWith("She".toLowerCase()) || text?.startsWith("He".toLowerCase()) || text?.startsWith("It".toLowerCase()) || text?.startsWith("I".toLowerCase())) {
-        if (text?.contains("${trackerOne1}".toLowerCase()) || text.contains("$trackerTwo1".toLowerCase()) || text?.contains("$trackerThree1".toLowerCase()) || text?.contains("$trackerFour1".toLowerCase())) {
-            command = text?.contains("${trackerOne1}".toLowerCase()) ? "${trackerOne1}".toLowerCase() : text?.contains("${trackerTwo1}".toLowerCase()) ? "${trackerTwo1}".toLowerCase() : text?.contains("${trackerThree1}".toLowerCase()) ? "${trackerThree1}".toLowerCase() : text?.contains("${trackerFour1}".toLowerCase()) ? "${trackerFour1}".toLowerCase() : "undefined"
+    if (tts?.startsWith("The".toLowerCase()) || tts?.startsWith("She".toLowerCase()) || tts?.startsWith("He".toLowerCase()) || tts?.startsWith("It".toLowerCase()) || tts?.startsWith("I".toLowerCase())) {
+        if (tts?.contains("${trackerOne1}".toLowerCase()) || tts.contains("$trackerTwo1".toLowerCase()) || tts?.contains("$trackerThree1".toLowerCase()) || tts?.contains("$trackerFour1".toLowerCase())) {
+            command = tts?.contains("${trackerOne1}".toLowerCase()) ? "${trackerOne1}".toLowerCase() : tts?.contains("${trackerTwo1}".toLowerCase()) ? "${trackerTwo1}".toLowerCase() : tts?.contains("${trackerThree1}".toLowerCase()) ? "${trackerThree1}".toLowerCase() : tts?.contains("${trackerFour1}".toLowerCase()) ? "${trackerFour1}".toLowerCase() : "undefined"
             deviceType = "trackerNotification"
             log.info "Task Tracker activated"
         }
