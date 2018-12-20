@@ -1538,16 +1538,6 @@ def beginProcess(params, tts) {
     def String deviceType = (String) null
     def String colorMatch = (String) null
 
-/*if (roomDevice != null) {
-	log.debug "deviceId = $deviceId"
-    def roomDevice = parent.getDevice1ID()
-    log.debug "$roomDevice == $deviceId"
-	if ("${deviceId}" != "${roomDevice}") {
-    	outputTxt = "The room, $app.label, can only be activated by the device assigned to this room"
-    	return outputTxt
-	}
-//}*/
-
 	// CANCEL ALL SCHEDULED TIMERS/DELAYS
     if (tts.contains("cancel the delay") || tts.contains("cancel the timer")) {
         unschedule(resetTts)
@@ -1599,12 +1589,10 @@ def beginProcess(params, tts) {
         if (parent.debug) log.debug "Stop Conversation mode requested: $outputTxt"
         return outputTxt 
         }
-//	}    
 
 else {
-    	//outputTxt = deviceCmd(tts)
-    	//return outputTxt
-        deviceCmd(params, tts)
+    	outputTxt = deviceCmd(params, tts)
+    	return outputTxt
     }    
 }    
 	
@@ -1635,10 +1623,10 @@ def deviceCmd(params, tts) {
     if (command == "undefined" || command == null) {
     if (deviceType == "light" || deviceType == "message" || (deviceType == null && command == null)) { //if ((!sonosDevice && !synthDevice)) {   
         state.lastTime = new Date(now()).format("h:mm aa, dd-MMMM-yyyy", location.timeZone)
-        //outputTxt = ttsHandler(tts) 
-        ttsHandler(tts)
+        outputTxt = ttsHandler(tts) 
+     //   ttsHandler(tts)
         pContCmdsR = "profile"
-   //     return outputTxt
+        return outputTxt
     	}
     }
 
