@@ -1,6 +1,7 @@
 /* 
 * EchoSistant Rooms Profile - EchoSistant Add-on
 *
+*		12/19/2018		Version:4.6 R.0.2.4		Bug fix for the bug fix for resetting the queue... my bad :)
 *		12/19/2018		Version:4.6 R.0.2.3		Bug fix in resetting the queue of an Alexa device via Echo Speaks app and added feedback "are the automations on".
 *		12/18/2018		Version:4.6 R.0.2.2		Added color control to color group as well as individual device color control
 *		12/16/2018		Version:4.6 R.0.2.1		Bug fix in verbal command to reset queue of Alexa devices from Echo Speaks
@@ -68,7 +69,7 @@ private release() {
 	def text = "R.0.4.6"
 }
 private revision(text) {
-	text = "Version 4.6, Revision 0.2.3"
+	text = "Version 4.6, Revision 0.2.4"
     state.version = "${text}"
     return text
     }
@@ -2675,62 +2676,62 @@ log.warn "tts has been changed to: $tts"
         	}
         } 
         if (gCustom1N) {
-        	if (text.contains(settings.gCustom1N.toLowerCase())) {
-            command = text.contains("turn on") ? "on" : text.contains("turn off") ? "off" : text.contains("switch on") ? "on" : text.contains("lights on") ? "on" : text.contains("lights off") ? "off" : text.contains("switch off") ? "off" : "undefined"
+        	if (tts.contains(settings.gCustom1N.toLowerCase())) {
+            command = tts.contains("turn on") ? "on" : tts.contains("turn off") ? "off" : tts.contains("switch on") ? "on" : tts.contains("lights on") ? "on" : tts.contains("lights off") ? "off" : tts.contains("switch off") ? "off" : "undefined"
             if (command == "undefined") {
-               	command = text.contains("darker") ? "decrease" : text.contains("decrease") ? "decrease" : text.contains("dim") ? "decrease" : text.contains("dimmer") ? "decrease" : text.contains("lower") ? "decrease" :"undefined"
+               	command = tts.contains("darker") ? "decrease" : tts.contains("decrease") ? "decrease" : tts.contains("dim") ? "decrease" : tts.contains("dimmer") ? "decrease" : tts.contains("lower") ? "decrease" :"undefined"
             	}
             if (command == "undefined") {
-                command = text.contains("raise") ? "increase" : text.contains("brighter")  ? "increase" : text.contains("increase") ? "increase" : text.contains("brighten") ? "increase" : "undefined"
+                command = tts.contains("raise") ? "increase" : tts.contains("brighter")  ? "increase" : tts.contains("increase") ? "increase" : tts.contains("brighten") ? "increase" : "undefined"
             	}
             log.warn "command = $command"
             deviceType = "light1"
         	}
         }    
         if (gCustom2N) {
-            if (text.contains(settings.gCustom2N.toLowerCase())) {
-                command = text.contains("turn on") ? "on" : text.contains("turn off") ? "off" : text.contains("switch on") ? "on" : text.contains("lights on") ? "on" : text.contains("lights off") ? "off" : text.contains("switch off") ? "off" : "undefined"
+            if (tts.contains(settings.gCustom2N.toLowerCase())) {
+                command = tts.contains("turn on") ? "on" : tts.contains("turn off") ? "off" : tts.contains("switch on") ? "on" : tts.contains("lights on") ? "on" : tts.contains("lights off") ? "off" : tts.contains("switch off") ? "off" : "undefined"
             if (command == "undefined") {
-               	command = text.contains("darker") ? "decrease" : text.contains("decrease") ? "decrease" : text.contains("dim") ? "decrease" : text.contains("dimmer") ? "decrease" : text.contains("lower") ? "decrease" :"undefined"
+               	command = tts.contains("darker") ? "decrease" : tts.contains("decrease") ? "decrease" : tts.contains("dim") ? "decrease" : tts.contains("dimmer") ? "decrease" : tts.contains("lower") ? "decrease" :"undefined"
             	}
             if (command == "undefined") {
-                command = text.contains("raise") ? "increase" : text.contains("brighter")  ? "increase" : text.contains("increase") ? "increase" : text.contains("brighten") ? "increase" : "undefined"
+                command = tts.contains("raise") ? "increase" : tts.contains("brighter")  ? "increase" : tts.contains("increase") ? "increase" : tts.contains("brighten") ? "increase" : "undefined"
             	}
                 deviceType = "light2"
             }
         }
         if (gCustom3N) {
-            if (text.contains(settings.gCustom3N.toLowerCase())) {
-                command = text.contains("turn on") ? "on" : text.contains("turn off") ? "off" : text.contains("switch on") ? "on" : text.contains("lights on") ? "on" : text.contains("lights off") ? "off" : text.contains("switch off") ? "off" : "undefined"
+            if (tts.contains(settings.gCustom3N.toLowerCase())) {
+                command = tts.contains("turn on") ? "on" : tts.contains("turn off") ? "off" : tts.contains("switch on") ? "on" : tts.contains("lights on") ? "on" : tts.contains("lights off") ? "off" : tts.contains("switch off") ? "off" : "undefined"
             if (command == "undefined") {
-               	command = text.contains("darker") ? "decrease" : text.contains("decrease") ? "decrease" : text.contains("dim") ? "decrease" : text.contains("dimmer") ? "decrease" : text.contains("lower") ? "decrease" :"undefined"
+               	command = tts.contains("darker") ? "decrease" : tts.contains("decrease") ? "decrease" : tts.contains("dim") ? "decrease" : tts.contains("dimmer") ? "decrease" : tts.contains("lower") ? "decrease" :"undefined"
             	}
             if (command == "undefined") {
-                command = text.contains("raise") ? "increase" : text.contains("brighter")  ? "increase" : text.contains("increase") ? "increase" : text.contains("brighten") ? "increase" : "undefined"
+                command = tts.contains("raise") ? "increase" : tts.contains("brighter")  ? "increase" : tts.contains("increase") ? "increase" : tts.contains("brighten") ? "increase" : "undefined"
             	}
                 deviceType = "light3"
             }
         }
         if (gCustom4N) {
-            if (text.contains(settings.gCustom4N.toLowerCase())) {
-                command = text.contains("turn on") ? "on" : text.contains("turn off") ? "off" : text.contains("switch on") ? "on" : text.contains("lights on") ? "on" : text.contains("lights off") ? "off" : text.contains("switch off") ? "off" : "undefined"
+            if (tts.contains(settings.gCustom4N.toLowerCase())) {
+                command = tts.contains("turn on") ? "on" : tts.contains("turn off") ? "off" : tts.contains("switch on") ? "on" : tts.contains("lights on") ? "on" : tts.contains("lights off") ? "off" : tts.contains("switch off") ? "off" : "undefined"
             if (command == "undefined") {
-               	command = text.contains("darker") ? "decrease" : text.contains("decrease") ? "decrease" : text.contains("dim") ? "decrease" : text.contains("dimmer") ? "decrease" : text.contains("lower") ? "decrease" :"undefined"
+               	command = tts.contains("darker") ? "decrease" : tts.contains("decrease") ? "decrease" : tts.contains("dim") ? "decrease" : tts.contains("dimmer") ? "decrease" : tts.contains("lower") ? "decrease" :"undefined"
             	}
             if (command == "undefined") {
-                command = text.contains("raise") ? "increase" : text.contains("brighter")  ? "increase" : text.contains("increase") ? "increase" : text.contains("brighten") ? "increase" : "undefined"
+                command = tts.contains("raise") ? "increase" : tts.contains("brighter")  ? "increase" : tts.contains("increase") ? "increase" : tts.contains("brighten") ? "increase" : "undefined"
             	}
                 deviceType = "light4"
             }
         }
         if (gCustom5N) {
-            if (text.contains(settings.gCustom5N.toLowerCase())) {
-                command = text.contains("turn on") ? "on" : text.contains("turn off") ? "off" : text.contains("switch on") ? "on" : text.contains("lights on") ? "on" : text.contains("lights off") ? "off" : text.contains("switch off") ? "off" : "undefined"
+            if (tts.contains(settings.gCustom5N.toLowerCase())) {
+                command = tts.contains("turn on") ? "on" : tts.contains("turn off") ? "off" : tts.contains("switch on") ? "on" : tts.contains("lights on") ? "on" : tts.contains("lights off") ? "off" : tts.contains("switch off") ? "off" : "undefined"
             if (command == "undefined") {
-               	command = text.contains("darker") ? "decrease" : text.contains("decrease") ? "decrease" : text.contains("dim") ? "decrease" : text.contains("dimmer") ? "decrease" : text.contains("lower") ? "decrease" :"undefined"
+               	command = tts.contains("darker") ? "decrease" : tts.contains("decrease") ? "decrease" : tts.contains("dim") ? "decrease" : tts.contains("dimmer") ? "decrease" : tts.contains("lower") ? "decrease" :"undefined"
             	}
             if (command == "undefined") {
-                command = text.contains("raise") ? "increase" : text.contains("brighter")  ? "increase" : text.contains("increase") ? "increase" : text.contains("brighten") ? "increase" : "undefined"
+                command = tts.contains("raise") ? "increase" : tts.contains("brighter")  ? "increase" : tts.contains("increase") ? "increase" : tts.contains("brighten") ? "increase" : "undefined"
             	}
                 deviceType = "light5"
             }
