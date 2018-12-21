@@ -1,6 +1,7 @@
 /* 
 * EchoSistant Rooms Profile - EchoSistant Add-on
 *
+*		12/21/2018		Version:4.6 R.0.2.5		UI changes and WebCoRE Pistons execution bug fix
 *		12/19/2018		Version:4.6 R.0.2.4		Bug fix for the bug fix for resetting the queue... my bad :)
 *		12/19/2018		Version:4.6 R.0.2.3		Bug fix in resetting the queue of an Alexa device via Echo Speaks app and added feedback "are the automations on".
 *		12/18/2018		Version:4.6 R.0.2.2		Added color control to color group as well as individual device color control
@@ -69,7 +70,7 @@ private release() {
 	def text = "R.0.4.6"
 }
 private revision(text) {
-	text = "Version 4.6, Revision 0.2.4"
+	text = "Version 4.6, Revision 0.2.5"
     state.version = "${text}"
     return text
     }
@@ -95,7 +96,7 @@ preferences {
 
 // MAIN PROFILE - HOME PAGE
 def mainProfilePage() {	
-    dynamicPage(name: "mainProfilePage", title:"", install: true, uninstall: true) {
+    dynamicPage(name: "mainProfilePage", title:"", install: true) {
         section ("") {
             label title:"Name this Room", required:true,
             image: "https://raw.githubusercontent.com/BamaRayne/SmartSuite/master/Icons/Name.jpg"
@@ -108,11 +109,11 @@ def mainProfilePage() {
             image: "https://raw.githubusercontent.com/BamaRayne/SmartSuite/master/Icons/Messages.png"
         	}
         section("") {
-            href "feedback", title: "Devices & Device Groups Control and Feedback", description: mIntentD(), state: mIntentS(),
+            href "feedback", title: "Smart Home Control and Feedback", description: mIntentD(), state: mIntentS(),
             image: "https://raw.githubusercontent.com/BamaRayne/SmartSuite/master/Icons/control panel.ico"
         }
         section("") {    
-            href "LogicBlocks", title: "Logic Blocks", description: mRoomsDL(), state: mRoomsSL(),
+            href "LogicBlocks", title: "Logic Blocks and Reports", description: mRoomsDL(), state: mRoomsSL(),
             image:"https://raw.githubusercontent.com/jasonrwise77/My-SmartThings/master/LogicRulz%20Icons/Blok.png"
             }
         section ("") {
@@ -156,7 +157,7 @@ def messaging(){
 // FEEDBACK CONFIGURATION HOME PAGE
 page name: "feedback"
 def feedback(){
-    dynamicPage(name: "feedback", title: "Device Groups Control and Feedback Configuration", uninstall: false){  
+    dynamicPage(name: "feedback", title: "Control and Feedback Configuration", uninstall: false){  
         section("") {
             href "cDevices", title: "System Control", description: pGroupComplete(), state: pGroupSettings(),
             image: "https://raw.githubusercontent.com/BamaRayne/SmartSuite/master/Icons/control panel.ico"
@@ -166,12 +167,12 @@ def feedback(){
             image: "https://raw.githubusercontent.com/BamaRayne/SmartSuite/master/Icons/Feedback.png"
         }
         section("") {    
-            href "pActions", title: "Location and Profile Actions (to execute when Profile runs)", description: pActionsComplete(), state: pActionsSettings(),
+            href "pActions", title: "Location and Profile Actions (performed when $app.label is executed)", description: pActionsComplete(), state: pActionsSettings(),
             image: "https://raw.githubusercontent.com/BamaRayne/SmartSuite/master/Icons/Action.png"
         }        
         section ("Run the actions for this webCoRE Piston") {
                 input "myPiston", "enum", title: "Choose Piston...", options:  parent.webCoRE_list('name'), multiple: false, required: false,
-                image: "https://cdn.rawgit.com/ady624/${webCoRE_handle()}/master/resources/icons/app-CoRE.png"
+                image: "https://cdn.rawgit.com/ady624/${parent.webCoRE_handle()}/master/resources/icons/app-CoRE.png"
         }
     }
 }
@@ -397,7 +398,7 @@ def pSend(){
             	}
             }
         section ("") {
-        	input "smc", "bool", title: "Send the message to Smart Message Control", default: false, submitOnChange: true
+        	input "smc", "bool", title: "Send all messages to Smart Message Control", default: false, submitOnChange: true
             }
         section ("" ) {
             input "sendText", "bool", title: "Enable Text Notifications", required: false, submitOnChange: true     
@@ -643,15 +644,6 @@ def certainTime() {
 **** HANDLERS FOLLOW
 ************************************************************************************************************/
 
-//NEW webCoRE Integration
-private webCoRE_handle(){return'webCoRE'}
-private webCoRE_init(pistonExecutedCbk){state.webCoRE=(state.webCoRE instanceof Map?state.webCoRE:[:])+(pistonExecutedCbk?[cbk:pistonExecutedCbk]:[:]);subscribe(location,"${webCoRE_handle()}.pistonList",webCoRE_handler);if(pistonExecutedCbk)subscribe(location,"${webCoRE_handle()}.pistonExecuted",webCoRE_handler);webCoRE_poll();}
-private webCoRE_poll(){sendLocationEvent([name: webCoRE_handle(),value:'poll',isStateChange:true,displayed:false])}
-public  webCoRE_execute(pistonIdOrName,Map data=[:]){def i=(state.webCoRE?.pistons?:[]).find{(it.name==pistonIdOrName)||(it.id==pistonIdOrName)}?.id;if(i){sendLocationEvent([name:i,value:app.label,isStateChange:true,displayed:false,data:data])}}
-public  webCoRE_list(mode){def p=state.webCoRE?.pistons;if(p)p.collect{mode=='id'?it.id:(mode=='name'?it.name:[id:it.id,name:it.name])}}
-public  webCoRE_handler(evt){switch(evt.value){case 'pistonList':List p=state.webCoRE?.pistons?:[];Map d=evt.jsonData?:[:];if(d.id&&d.pistons&&(d.pistons instanceof List)){p.removeAll{it.iid==d.id};p+=d.pistons.collect{[iid:d.id]+it}.sort{it.name};state.webCoRE = [updated:now(),pistons:p];};break;case 'pistonExecuted':def cbk=state.webCoRE?.cbk;if(cbk&&evt.jsonData)"$cbk"(evt.jsonData);break;}}
-
-
 // VIRTUAL PERSON CREATE HANDLER
 def virtualPerson() {
     log.trace "Creating Voice Companion Virtual Person Device"
@@ -728,7 +720,8 @@ def updated() {
     if(!atomicState?.isInstalled) { atomicState?.isInstalled = true }
 }
 def initialize() {
-	state.tts
+	parent.webCoRE_init()
+    state.tts
     state.lastMessage
     state.lastTime
     state.lastAction = null
@@ -864,7 +857,7 @@ if (roomDevice != null) {
 
         // ALEXA DEVICES - LAST THING SPOKEN
         if (tts.contains("last thing said")) {
-            def result = "The last thing spoken on the " +  "${sSpeaker}" + " was, " + sSpeaker.currentState("lastSpeakCmd")?.stringValue
+            def result = "The last thing spoken on the " +  "${sSpeaker}" + " was, " + sSpeaker?.currentState("lastSpeakCmd")?.stringValue
             outputTxt = stripBrackets(result ? " $result " : "")
             if (parent.debug) log.debug "Alexa Device: Last speak cmd was --> $result"
             return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
@@ -1460,17 +1453,18 @@ def profileEvaluate(params) {
 	def outputTxt = null
 
 		// PARSE INCOMING TTS INTO INDIVIDUAL COMMANDS  
-    	if (tts.contains("and then")) {  //skips everything just to send a mesage
+/*    	if (tts.contains("and then")) {  //skips everything just to send a mesage
         	def ttsText = tts.toLowerCase()
             ttsHandler(tts)
             outputTxt = "Ok, your message has been sent to $app.label"
         	return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
             }
             else {  // Parser
-    			def newTts = tts.split("and").each { t -> 
+   */ 			def newTts = tts.split("and").each { t -> 
         		def ttsText = t.toLowerCase()
         		log.info "ttsText is: $ttsText"
-                    
+
+
         // PARSE OUT DELAY TIME 
         if ((ttsText.findAll("[0-999999]")) && (tts.contains("minute") || tts.contains("minutes"))) {
             def timer = ttsText.replaceAll("\\D+","").toInteger();
@@ -1478,12 +1472,14 @@ def profileEvaluate(params) {
                 	outputTxt = "Ok, I will $tts" 
             		state.resetTTS1 = ttsText
             		runIn(timer*60, resetTts1, [overwrite:false])
+                    log.debug "1st delay time will perform: $state.resetTTS1"
         			return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
             	}
             	if ("$timer" > 1) { 
                 	outputTxt = "Ok, I will $tts" 
             		state.resetTTS2 = ttsText
             		runIn(timer*60, resetTts2, [overwrite:false])
+                    log.debug "2nd delay time will perform: $state.resetTTS2"
         			return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
             	}
             //	state.resetTTS = ttsText
@@ -1495,7 +1491,7 @@ def profileEvaluate(params) {
         	return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
         	} 
 		}
-    }
+//    }
 	return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
 }    
 
@@ -1548,7 +1544,7 @@ def beginProcess(params, tts) {
     // EXECUTE WEBCORE PISTONS
 	if (tts.contains("execute piston") || tts.contains("run piston")) {
 		if (myPiston) {
-    		webCoRE_execute(myPiston)
+    		parent.webCoRE_execute(myPiston)
 			outputTxt = "ok, I have executed the piston, $myPiston"
         	if (parent.debug) log.info "executing piston name = $myPiston"
         	return outputTxt 		}

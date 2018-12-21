@@ -2,6 +2,7 @@
 * EchoSistant Rooms Logic Blocks
 *
 *
+*	12/21/2018		Version:2.0 R.0.5.2		Bug fix for executing WebCoRE Pistons
 *	12/13/2018		Version:2.0 R.0.5.1b	Another humidity outdoors bug fix
 *	12/09/2018		Version:2.0 R.0.5.1a	Bug fix in Humidity Outdoors variable for reports
 *	12/07/2018		Version:2.0 R.0.5.1		Added new variables: &shm, &mode, &tempIn, &tempOut, &humIn, &humOut, &fans
@@ -90,7 +91,7 @@ definition(
 	iconX3Url		: "https://raw.githubusercontent.com/jasonrwise77/My-SmartThings/master/LogicRulz%20Icons/LogicRulz2x.png")
 /**********************************************************************************************************************************************/
 private def version() { 
-    	def text = "Version 2.0, Revision 0.5.1b"
+    	def text = "Version 2.0, Revision 0.5.2"
         //LogicBlocks Ver 2.0 / R.0.5.0, Release date: 12/05/2018, Initial App Release Date: 04/23/2018" 
 	}
 
@@ -508,7 +509,7 @@ def actions() {
     dynamicPage(name: "actions", title: "These Actions will occur...",install: false, uninstall: false) {
     	section ("Select Actions Capabilities") {    
     		input "actions", "enum", title: "Select Actions Capabilities", options:["Switches","Dimmers","Color Bulbs","Virtual Presence",
-            "Locks & Doors","Fans & Ceiling Fans","Thermostats, Vents, & Shades","Custom Commands","Device Health","Mode, SHM, Routines, Logic Blocks & RemindR Profiles"], multiple: true, required: true, submitOnChange: true
+            "Locks & Doors","Fans & Ceiling Fans","Thermostats, Vents, & Shades","Custom Commands","Device Health","Mode, SHM, Routines, Logic Blocks, RemindR Profiles, and WebCoRE Pistons"], multiple: true, required: true, submitOnChange: true
             }
         if (actions.contains("Switches")) {    
             section("Simple On/Off/Toggle Switches", hideable: true, hidden: false) {    
@@ -760,14 +761,15 @@ def actions() {
             	}
             }
         }
-    if (actions.contains("Mode, SHM, Routines, Logic Blocks & RemindR Profiles")) {
-    	section("Mode, SHM, SmartThings Routines, & Logic Blockz", hideable: true, hidden: false){
+    if (actions.contains("Mode, SHM, Routines, Logic Blocks, RemindR Profiles, and WebCoRE Pistons")) {
+    	section("Mode, SHM, ST Routines, Logic Blockz, RemindR, and WebCoRE", hideable: true, hidden: false){
             input "tSelf", "enum", title: "Perform the actions of these Logic Blokz", options: getRoutines(), multiple: true, required: false, submitOnChange: true
             	if (tSelf) input "tSelfDelay", "number", title: "Delay running by this number of seconds", defaultValue: 0, required: false, submitOnChange: true
             		if (tSelfDelay) input "tSelfPend", "bool", title: "Activate for pending cancellation", defaultValue: false, required: false, submitOnChange: true
             input "remindRProfile", "enum", title: "Execute this RemindR Profile...", options:  parent.listRemindRProfiles(), multiple: false, required: false
-        	
-            if(!tMode){
+        	input "myPiston", "enum", title: "Choose Piston...", options:  parent.parent.webCoRE_list('name'), multiple: false, required: false//,
+            //    image: "https://cdn.rawgit.com/ady624/${webCoRE_handle()}/master/resources/icons/app-CoRE.png"
+        	if(!tMode){
                 def modes = location.modes.name.sort()
                 input "aMode", "enum", title: "Change the Mode to", options: modes, multiple: false, required: false
             }
@@ -1039,7 +1041,7 @@ def initialize() {
 	log.info "The parent pause toggle is $parent.aPause and this routines pause toggle is $rPause"
 //    if (rPause == false) { unschedule() }
 //    if (rPause == true) {
-    
+    parent.parent.webCoRE_init()
     // Misc Variables
     state.tSelfHandlerEvt = null
 
@@ -1445,6 +1447,11 @@ def processActions(evt){
         def devList = []
         def aSwitchSize = aSwitch?.size()
 
+    	// EXECUTE WEBCORE PISTONS
+		if (myPiston) {
+    		parent.parent.webCoRE_execute(myPiston)
+		}
+				
         // SET DIMMERS BY LEVEL
         if (modeDimmers) { dimModes() }
 

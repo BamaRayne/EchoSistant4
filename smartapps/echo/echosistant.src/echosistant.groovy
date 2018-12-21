@@ -8,14 +8,15 @@
  
  ************************************ FOR INTERNAL USE ONLY ******************************************************
 
- *		18 December 2018	Version: 4.6 R.0.0.2e	Bug fix in SHM announcements and addition of optional restore volume on Alexa Devices, UI updates	
- *		18 December 2018	Version: 4.6 R.0.0.2d	Bug fix
- *		16 December 2018	Version: 4.6 R.0.0.2C	Addidtion of system defaults page
- *		06 December 2018	Version: 4.6 R.0.0.2b	Small changes and updates
- *		01 December 2018	Version: 4.6 R.0.0.2a	Moved donations to opening page
- *		27 November 2018	Version: 4.6 R.0.0.2	Bug fix in ST token generation and code clean up
- *		23 November 2018 	Version: 4.6 R.0.0.1	Version change and release
- *		26 October 2018		Version: 4.5 R.0.0.2		Re-Release
+ *		12/21/2018	Version: 4.6 R.0.0.3	UI Changes and bug fix in WebCoRE Piston execution	
+ *		12/18/2018 	Version: 4.6 R.0.0.2e	Bug fix in SHM announcements and addition of optional restore volume on Alexa Devices, UI updates	
+ *		12/18/2018 	Version: 4.6 R.0.0.2d	Bug fix
+ *		12/16/2018 	Version: 4.6 R.0.0.2C	Addidtion of system defaults page
+ *		12/06/2018 	Version: 4.6 R.0.0.2b	Small changes and updates
+ *		12/01/2018 	Version: 4.6 R.0.0.2a	Moved donations to opening page
+ *		11/27/2018 	Version: 4.6 R.0.0.2		Bug fix in ST token generation and code clean up
+ *		11/23/2018 	Version: 4.6 R.0.0.1		Version change and release
+ *		10/26/2018 	Version: 4.5 R.0.0.2		Re-Release
  *
  *  Copyright 2018 Jason Headley & Bobby Dobrescu
  *
@@ -60,7 +61,7 @@ private def textVersion() {
 	def text = "1.0"
 }
 private release() {
-    def text = "Version 4.6, Revision 0.0.2e"
+    def text = "Version 4.6, Revision 0.0.3"
 }
 /**********************************************************************************************************************************************/
 preferences {   
@@ -608,11 +609,10 @@ def processTts(tts) {
         ptts = ptts.toLowerCase()
         log.debug "ptts = = $ptts"
 
-             if (ptts.contains(" in the")) {
-             	ptts = ptts.replaceAll("\\bin the.*\\b","")
-            //    ptts = ptts.replaceAll("\\bin the.*\\b", "")
-			}
-             childApps.each {child ->
+	if (ptts.contains(" in the")) {
+		ptts = ptts.replaceAll("\\bin the.*\\b","")
+		}
+			childApps.each {child ->
              	if (child.label.toLowerCase() == pintentName.toLowerCase()) { 
                     if (debug) log.debug "Found a profile: '${pintentName}'"
                     pintentName = child.label
@@ -648,7 +648,6 @@ def processTts(tts) {
                     	}
                 	}
             	}
-//			}
             if (outputTxt?.size()>0){
                 return ["outputTxt":outputTxt, "pContCmds":pContCmds, "pShort":state.pShort, "pContCmdsR":pContCmdsR, "pTryAgain":pTryAgain, "pPIN":pPIN]
             }
