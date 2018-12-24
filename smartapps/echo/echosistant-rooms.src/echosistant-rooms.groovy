@@ -1,6 +1,7 @@
 /* 
 * EchoSistant Rooms Profile - EchoSistant Add-on
 *
+*		12/24/2018		Version:4.6 R.0.2.9		Fixed bug in running Logic Blockz from Alexa
 *		12/23/2018		Version:4.6 R.0.2.8		Fixed problem with adjusting dimmers group using Alexa Feels commands
 *		12/22/2018		Version:4.6 R.0.2.7		Added audio notifications kill switches to control and feedback along with autorestore feature.
 												Set room specific permissions for SHM arm/disarm
@@ -74,7 +75,7 @@ private release() {
 	def text = "R.0.4.6"
 }
 private revision(text) {
-	text = "Version 4.6, Revision 0.2.8"
+	text = "Version 4.6, Revision 0.2.9"
     state.version = "${text}"
     return text
     }
@@ -2144,7 +2145,7 @@ def ttsHandler(tts) {
     def sc = childApps?.find {s -> s?.label?.toLowerCase() == tts?.toLowerCase()}
     if (sc) {
     sc?.processActions(evt)
-        if (sc.report == true && sc.message != null && sc.pistonMsg == false) {
+        if (sc.report == true && sc.message != null) {
         	def message = sc.message
             outputTxt = sc.runProfile(message, evt) 
             }
@@ -2152,16 +2153,15 @@ def ttsHandler(tts) {
             outputTxt = sc.scResponse
         }
         else if (sc.pistonMsg == true) {
-        	def message = "ok"
-            outputTxt = message
+        log.info "The piston is producing the audio output"
         }
-        else {outputTxt = "I'm executing the shortcut for the room, " + cm}
+        else {outputTxt = "I'm executing the Logic Block Shortcut for the room, " + cm}
         return outputTxt
     }
     def s1 = childApps.find {s -> s.alias1?.toLowerCase() == tts.toLowerCase()}
     if (s1) {
     	s1.processActions(evt)
-        if (s1.report == true && s1.message != null && s1.pistonMsg == false) {
+        if (s1.report == true && s1.message != null) {
         	def message = s1.message
             outputTxt = s1.runProfile(message, evt) 
             }
@@ -2169,16 +2169,15 @@ def ttsHandler(tts) {
             outputTxt = s1.scResponse1
         }
         else if (s1.pistonMsg == true) {
-        	def message = "ok"
-            outputTxt = message
+        log.info "The piston is producing the audio output"
         }
-        else {outputTxt = "I'm executing the shortcut for the room, " + cm}
+        else {outputTxt = "I'm executing the Logic Block Shortcut for the room, " + cm}
         return outputTxt
     }
     def s2 = childApps.find {s -> s.alias2?.toLowerCase() == tts.toLowerCase()}
     if (s2) {
         s2.processActions(evt)
-        if (ss2c.report == true && s2.message != null && s2.pistonMsg == false) {
+        if (ss2c.report == true && s2.message != null) {
         	def message = s2.message
             outputTxt = s2.runProfile(message, evt) 
             }
@@ -2186,16 +2185,15 @@ def ttsHandler(tts) {
             outputTxt = s2.scResponse2
         }
         else if (s2.pistonMsg == true) {
-        	def message = "ok"
-            outputTxt = message
+        log.info "The piston is producing the audio output"
         }
-        else {outputTxt = "I'm executing the shortcut for the room, " + cm}
+        else {outputTxt = "I'm executing the Logic Block Shortcut for the room, " + cm}
         return outputTxt
     }
     def s3 = childApps.find {s -> s.alias3?.toLowerCase() == tts.toLowerCase()}
     if (s3) {
         s3.processActions(evt)
-        if (s3.report == true && s3.message != null && s3.pistonMsg == false) {
+        if (s3.report == true && s3.message != null) {
         	def message = s3.message
             outputTxt = s3.runProfile(message, evt) 
             }
@@ -2203,16 +2201,15 @@ def ttsHandler(tts) {
             outputTxt = c3.scResponse3
         }
         else if (s3.pistonMsg == true) {
-        	def message = "ok"
-            outputTxt = message
+        log.info "The piston is producing the audio output"
         }
-        else {outputTxt = "I'm executing the shortcut for the room, " + cm}
+        else {outputTxt = "I'm executing the Logic Block Shortcut for the room, " + cm}
         return outputTxt
     }
     def s4 = childApps.find {s -> s.alias4?.toLowerCase() == tts.toLowerCase()}
     if (s4) {
         s4.processActions(evt)
-        if (s4.report == true && s4.message != null && s4.pistonMsg == false) {
+        if (s4.report == true && s4.message != null) {
         	def message = s4.message
             outputTxt = s4.runProfile(message, evt) 
             }
@@ -2220,16 +2217,15 @@ def ttsHandler(tts) {
             outputTxt = c4.scResponse4
         }
         else if (s4.pistonMsg == true) {
-        	def message = "ok"
-            outputTxt = message
+        log.info "The piston is producing the audio output"
         }
-        else {outputTxt = "I'm executing the shortcut for the room, " + cm}
+        else {outputTxt = "I'm executing the Logic Block Shortcut for the room, " + cm}
         return outputTxt
     }
     def s5 = childApps.find {s -> s.alias5?.toLowerCase() == tts.toLowerCase()}
     if (s5) {
         s5.processActions(evt)
-        if (s5.report == true && s5.message != null && s5.pistonMsg == false) {
+        if (s5.report == true && s5.message != null) {
         	def message = s5.message
             outputTxt = s5.runProfile(message, evt) 
             }
@@ -2237,10 +2233,9 @@ def ttsHandler(tts) {
             outputTxt = c5.scResponse5
         }
         else if (s5.pistonMsg == true) {
-        	def message = "ok"
-            outputTxt = message
+        log.info "The piston is producing the audio output"
         }
-        else {outputTxt = "I'm executing the shortcut for the room, " + cm}
+        else {outputTxt = "I'm executing the Logic Block Shortcut for the room, " + cm}
         return outputTxt
     }
 
