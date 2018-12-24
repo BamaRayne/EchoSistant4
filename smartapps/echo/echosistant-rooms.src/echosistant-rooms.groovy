@@ -1,6 +1,10 @@
 /* 
 * EchoSistant Rooms Profile - EchoSistant Add-on
 *
+*		12/23/2018		Version:4.6 R.0.2.8		Fixed problem with adjusting dimmers group using Alexa Feels commands
+*		12/22/2018		Version:4.6 R.0.2.7		Added audio notifications kill switches to control and feedback along with autorestore feature.
+												Set room specific permissions for SHM arm/disarm
+*		12/22/2018		Version:4.6 R.0.2.6		Rebuild of fans control to improve reliability
 *		12/21/2018		Version:4.6 R.0.2.5		UI changes and WebCoRE Pistons execution bug fix
 *		12/19/2018		Version:4.6 R.0.2.4		Bug fix for the bug fix for resetting the queue... my bad :)
 *		12/19/2018		Version:4.6 R.0.2.3		Bug fix in resetting the queue of an Alexa device via Echo Speaks app and added feedback "are the automations on".
@@ -70,7 +74,7 @@ private release() {
 	def text = "R.0.4.6"
 }
 private revision(text) {
-	text = "Version 4.6, Revision 0.2.5"
+	text = "Version 4.6, Revision 0.2.8"
     state.version = "${text}"
     return text
     }
@@ -552,31 +556,41 @@ def pDeviceControl() {
 page name: "cDevices"
 def cDevices() {
     dynamicPage(name: "cDevices", title: "", install: false, uninstall: false) {
-        section ("Location Modes"){
+        section ("System Settings") {
+        	input "allowAlarm", "bool", title: "Can this room control the Smart Home Monitor Alarm system?", required: false, default: false, submitOnChange: true
+            }
+        section ("Location Modes") {
         	input "mMode", "enum", title: "Choose Modes to be used by this Room...", options: location.modes.name.sort(), multiple: true, required: false 
             }
-        section ("Garage Doors"){
-        	input "gGarage", "capability.garageDoorControl", title: "Garage Door(s)...", multiple:true, required: false
+        section ("Notifications and Automations Kill Switches"){
+            input "gDisable", "capability.switch", title: "Group Automation & Disable Switches (disable = off, enable = on)", multiple: true, required: false
+            if (gDisable) { 
+                input "gDisTime", "number", title: "Automatically restore Automations after this number of minutes", defaultValue: 0, required: false
+            }
+            input "gNotDisable", "capability.switch", title: "Notifications Disable Switches (disable = off, enable = on)", multiple: true, required: false
+            if (gNotDisable) {
+                input "gNotDisTime", "number", title: "Automaticaly restore Notifications after this number of minutes", defaultValue: 0, required: false
+            }
         }
-        section ("Vents and Window Coverings Groups"){ 
-            input "gVents", "capability.switchLevel", title: "Group Smart Vent(s)...", multiple: true, required: false
-            input "gShades",  "capability.windowShade", title: "Group These Window Covering Devices...", multiple: true, required: false   
-        }                
         section ("Media"){
             input "sMedia", "capability.mediaController", title: "Use This Media Controller", multiple: false, required: false
             input "sSpeaker", "capability.musicPlayer", title: "Use This Media Player Device For Volume Control (Select your Alexa Devices)", required: false, multiple: false
             input "sSynth", "capability.speechSynthesis", title: "Use This Speech Synthesis Capable Device", multiple: false, required: false
         }             
+        section ("Garage Doors"){
+        	input "gGarage", "capability.garageDoorControl", title: "Garage Door(s)...", multiple:true, required: false
+        }
+        section ("Fans, Vents, and Window Coverings Groups"){ 
+            input "gVents", "capability.switchLevel", title: "Group Smart Vent(s)...", multiple: true, required: false
+            input "gShades",  "capability.windowShade", title: "Group These Window Covering Devices...", multiple: true, required: false   
+            input "gFans", "capability.switch", title: "Fans and Ceiling Fans...", multiple: true, required: false
+        }                
         section ("Lights and Switches Groups"){
             input "gSwitches", "capability.switch", title: "Group Lights and Switches...", multiple: true, required: false
         }
         section ("Color Lights and Bulbs"){
             input "gHues", "capability.colorControl", title: "Group Colored Lights...", multiple: true, required: false
 		}
-        section ("Ceiling Fans and Automations Groups"){
-   			input "gDisable", "capability.switch", title: "Group Automation & Disable Switches (disable = off, enable = on)", multiple: false, required: false
-            input "gFans", "capability.switch", title: "Fans and Ceiling Fans...", multiple: true, required: false
-        }
         section ("Create Custom Groups") {
             input "gCustom1N", "text", label: "Name this Group...", multiple: false, required: false, defaultLabel: "Custom Group 1"
             input "gCustom1", "capability.switch", title: "Select Switches for $gCustom1N...", multiple: true, required: false
@@ -685,22 +699,28 @@ private pVirToggle() {
 	SECURITY CONTROL HANDLER
 ************************************************************************************************************/ 
 def securityHandler(tts) {
-	def outputTxt
     def currentSHM = location.currentState("alarmSystemStatus")?.value
-    	if (tts.contains("turn on the alarm")){ 
-        	sendLocationEvent(name: "alarmSystemStatus", value: "stay")
-                	tts = "I changed the Smart Home Monitor to armed stay"
+    if (allowAlarm==false) { 
+        tts = "I'm sorry, but this room does not have permission to change the Alarm System. Please speak to the system administrator"
+    }
+    if (allowAlarm==true) {
+        if (tts.contains("turn on the alarm")){
+            if (allowAlarm==true) {
+                sendLocationEvent(name: "alarmSystemStatus", value: "stay")
+                tts = "I changed the Smart Home Monitor to armed stay"
                 log.info "securityHandler On says: $tts"
-			return tts
+                return tts
             }
-    	if (tts.contains("turn off the alarm")){ 
+        }
+        if (tts.contains("turn off the alarm")){ 
             sendLocationEvent(name: "alarmSystemStatus", value: "off")
-                	tts = "I have disarmed Smart Home Monitor"
-                    log.info "securityHandler Off says: $tts"
-			return tts
-		}
-	return tts
-    }    
+            tts = "I have disarmed the Smart Home Monitor Alarm system"
+            log.info "securityHandler Off says: $tts"
+            return tts
+        }
+    }
+    return tts
+}    
 
 /************************************************************************************************************
 Base Process
@@ -883,11 +903,11 @@ if (roomDevice != null) {
             return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
         }
 		// AUTOMATIONS ON OR OFF
-        if (tts.contains("are the automations") || tts.contains("are the automations active")) {
+        if (tts.contains("are the automations")) {
         	gDisable?.each { d ->
             def status = d.latestValue("switch")
             log.debug "automations current value is: $status"
-            if ((tts.contains(" on") || ttsContains("active")) && status == "on") {
+            if ((tts.contains(" on")) && status == "on") {
             	outputTxt = "Yes, the automations are currently on in the $app.label"
                 }
                 else if (status == "off") {
@@ -897,7 +917,23 @@ if (roomDevice != null) {
             	
         	return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
         }
-            
+
+		// AUDIO NOTIFICATIONS ON OR OFF
+        if (tts.contains("are the notifications")) {
+        	gNotDisable?.each { d ->
+            def status = d.latestValue("switch")
+            log.debug "automations current value is: $status"
+            if ((tts.contains(" on")) && status == "on") {
+            	outputTxt = "Yes, the notifications are currently on in the $app.label"
+                }
+                else if (status == "off") {
+                	outputTxt = "No, the notifications are currently off in the $app.label"
+                    }
+           }     
+            	
+        	return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
+        }
+
 /*        def switches = ["lamp", "stove", "fridge", "washer", "dryer", "oven", "plug", "outlet", "TV", "automation", "fan", "bulb", "printer ", " light" ] 
         
         switches.each { item ->
@@ -1627,59 +1663,67 @@ def deviceCmd(params, tts) {
     }
 
     // DISABLE SWITCHES
-    if (deviceType == "disable"){
+    if (deviceType == "disable" && tts.contains("automations")){
         gDisable?."${command}"()
-        outputTxt = "ok, I will $params.ptts in the $app.label" //outputTxt = "Ok, turning $command the automations in the $app.label"
+        if (gDisTime > 0) { runIn(gDisTime*60, "automationsRestore") 
+        outputTxt = "ok, I will $params.ptts in the $app.label, and they will be automatically restored in $gDisTime minute" + ("$gDisTime" > 1 ? "s" : "") }
+        if (!gDisTime == 0) { outputTxt = "ok, I will $params.ptts in the $app.label" }
         pContCmdsR = "profile"
         return outputTxt                                  
     	}
-                //Colored Lights
-            if (deviceType == "color") {
-            log.debug "We got to the color changer"
-                if (gHues?.size()>0) {
-                    gHues?.each { c ->
-                    	def cMatch = c.label.toLowerCase()
-                        if(tts.contains("${cMatch}") && tts.contains("color")) {  // INDIVIDUAL LIGHTS ON/OFF
-                if (parent.trace) log.trace "Individual Color Bulb Match -> $cMatch"
-                        def hueSetVals
-                        tts = tts.replaceAll("\\b.*color \\b","").replaceAll("\\b.*to \\b","").replace("set lights color to ", "").replace("set the lights to color ", "").replace("set color to ", "")
-                        tts = tts.replace("change the color to ", "").replace("change the lights to ", "").replace("change color to ", "").replace("change lights to ", "")
-                        tts = tts == "day light" ? "Daylight" : tts == "be light" ? "Daylight" : tts
-                        hueSetVals =  getColorName( tts , level)
-                        if (hueSetVals) {
-                            c?.setColor(hueSetVals)
-                            outputTxt =  "Ok, I am setting the $cMatch to the color " + tts
-                        }
-                        else {
-                            outputTxt =  "Sorry, but I wasn't able to change the color to " +  tts
-                            def pTryAgain = true
-                        }
-                        return outputTxt
-				    }
-                }
-                
-                if (tts.contains("lights") || tts.contains("color")) {        
-                    // CHANGING COLORS
-                        def hueSetVals
-                        tts = tts.replaceAll("\\b.*color \\b","").replaceAll("\\b.*to \\b","")
-                        tts = tts == "day light" ? "Daylight" : tts == "be light" ? "Daylight" : tts
-                        
-                        hueSetVals =  getColorName( tts , level)
-                        if (hueSetVals) {
-                            gHues?.setColor(hueSetVals)
-                            outputTxt =  "Ok, changing your bulbs to " + tts
-                        }
-                        else {
-                            outputTxt =  "Sorry, I wasn't able to change the color to " +  tts
-                            def pTryAgain = true
-                        }
-                        return outputTxt
-                		}
+     
+    // NOTIFICATIONS DISABLE SWITCHES
+    if (deviceType == "disable" && tts.contains("notifications")){
+        gNotDisable?."${command}"()
+        if (gNotDisTime > 0) { runIn(gNotDisTime*60, "notificationsRestore")
+        outputTxt = "ok, I will $params.ptts in the $app.label, and they will be automatically restored in $gNotDisTime minutes" + ("$gNotDisTime" > 1 ? "s" : "") }
+        if (!gNotDisTime == 0) { outputTxt = "ok, I will $params.ptts in the $app.label" }
+        pContCmdsR = "profile"
+        return outputTxt                                  
+    	}
+     // COLORED LIGHTS - INDIVIDUAL
+    if (deviceType == "color") {
+        if (gHues?.size()>0) {
+            gHues?.each { c ->
+                def cMatch = c.label.toLowerCase()
+                if(tts.contains("${cMatch}") && tts.contains("color")) {  // INDIVIDUAL LIGHTS ON/OFF
+                    if (parent.trace) log.trace "Individual Color Bulb Match -> $cMatch"
+                    def hueSetVals
+                    tts = tts.replaceAll("\\b.*color \\b","").replaceAll("\\b.*to \\b","").replace("set lights color to ", "").replace("set the lights to color ", "").replace("set color to ", "")
+                    tts = tts.replace("change the color to ", "").replace("change the lights to ", "").replace("change color to ", "").replace("change lights to ", "")
+                    tts = tts == "day light" ? "Daylight" : tts == "be light" ? "Daylight" : tts
+                    hueSetVals =  getColorName( tts , level)
+                    if (hueSetVals) {
+                        c?.setColor(hueSetVals)
+                        outputTxt =  "Ok, I am setting the $cMatch to the color " + tts
                     }
-				}
-                
+                    else {
+                        outputTxt =  "Sorry, but I wasn't able to change the color to " +  tts
+                        def pTryAgain = true
+                    }
+                    return outputTxt
+                }
+            }
+            // COLORED LIGHTS - GROUPS
+            if (tts.contains("lights") || tts.contains("color")) {        
+                def hueSetVals
+                tts = tts.replaceAll("\\b.*color \\b","").replaceAll("\\b.*to \\b","")
+                tts = tts == "day light" ? "Daylight" : tts == "be light" ? "Daylight" : tts
 
-//tts.contains("light") || 
+                hueSetVals =  getColorName( tts , level)
+                if (hueSetVals) {
+                    gHues?.setColor(hueSetVals)
+                    outputTxt =  "Ok, changing your bulbs to " + tts
+                }
+                else {
+                    outputTxt =  "Sorry, I wasn't able to change the color to " +  tts
+                    def pTryAgain = true
+                }
+                return outputTxt
+            }
+        }
+    }
+                
 	// INDIVIDUAL AND GROUPS OF LIGHTS, LAMPS, & SWITCHES AS WELL AS ALEXA FEELINGS COMMANDS
     if (deviceType == "light" || deviceType == "light1" || deviceType == "light2" || deviceType == "light3" || deviceType == "light4" ||
     deviceType == "light5" || deviceType == "dimmer" || deviceType == "newLevel") {
@@ -1693,7 +1737,7 @@ def deviceCmd(params, tts) {
                 else {
                 m."$command"()
                 }
-                outputTxt = "ok, I will $params.ptts" //I have turned $command the $mMatch"
+                outputTxt = "ok, I will $params.ptts" 
 				return outputTxt
             }	// LIGHTS GROUP AND CUSTOM GROUPS
             else if (tts.contains("turn") && command != "undefined" && (tts.contains("lights") || deviceType == "light1" || deviceType == "light2" || deviceType == "light3" || deviceType == "light4" || deviceType == "light5")) {  
@@ -1704,14 +1748,14 @@ def deviceCmd(params, tts) {
                 if (deviceType == "light4") gCustom4?."$command"() 
                 if (deviceType == "light5") gCustom5?."$command"()
                 def groupName = deviceType == "light1" ? gCustom1N : deviceType == "light2" ? gCustom2N : deviceType == "light3" ? gCustom3N : deviceType == "light4" ? gCustom4N : deviceType == "light5" ? gCustom5N : "lights"
-                outputTxt = "ok, I will $params.ptts"  //outputTxt = "I have turned $command the $groupName"
+                outputTxt = "ok, I will $params.ptts"  
                 return outputTxt
             }  // INDIVIDUAL DIMMERS SET LEVELS
 			else if ((deviceType == "newLevel" || deviceType == "dimmer") && command == "undefined" && tts.findAll("[0-999999]")) {
                 if (tts.contains("${mMatch}")) {
                     def level = tts.replaceAll("\\D+","").toInteger();	
                     m.setLevel(level)
-                    outputTxt = "ok, I will $params.ptts" //outputTxt = "I have set the $m to $level percent"
+                    outputTxt = "ok, I will $params.ptts" 
                     return outputTxt
                 }  // DIMMER GROUPS SET LEVELS   
                 if (tts.contains("lights") && (deviceType == "newLevel" || deviceType == "dimmer") && command == "undefined" && tts.findAll("[0-999999]")) {
@@ -1726,27 +1770,31 @@ def deviceCmd(params, tts) {
                     def	currLevel = s?.latestValue("level")
                     def currState = s?.latestValue("switch") 
                     if (currLevel) {
-                        def newLevel = 3*10     
+                        def newLevel = parent.cLevel * 10
                         if (command == "increase") {
                             if (currLevel == null){
                                 s?.on()
-                                outputTxt = "ok, I will $params.ptts"//outputTxt = "Ok, turning on the " + app.label + " lights"   
+                                outputTxt = "Ok, turning on the " + app.label + " lights"   
                             }
                             else {
                                 newLevel =  currLevel + newLevel
                                 newLevel = newLevel < 0 ? 0 : newLevel >100 ? 100 : newLevel
-                                outputTxt = "ok, I will $params.ptts"//outputTxt = "Ok, increasing the " + app.label + " lights to $newLevel percent"
+                                s?.setLevel(newLevel)
+                                outputTxt = "Ok, increasing the " + app.label + " lights to $newLevel percent"
                             }
                         }
                         if (command == "decrease") {
                             if (currLevel == null) {
                                 s?.off()
-                                outputTxt = "ok, I will $params.ptts"//outputTxt = "Ok, turning off the " + app.label + " lights"                   
-                            }
+                                outputTxt = "Ok, adjusting off the " + app.label + " lights"                   
+                            	return outputTxt
+                                }
                             else {
                                 newLevel =  currLevel - newLevel
                                 newLevel = newLevel < 0 ? 0 : newLevel >100 ? 100 : newLevel
-                                outputTxt = "ok, I will $params.ptts"//outputTxt = "Ok, decreasing the " + app.label + " lights to $newLevel percent"
+                                s?.setLevel(newLevel)
+                                outputTxt = "Ok, decreasing the " + app.label + " lights to $newLevel percent"
+                            	return outputTxt
                             }
                         }            
                         if (newLevel > 0 && currState == "off") {
@@ -1770,70 +1818,77 @@ def deviceCmd(params, tts) {
         return outputTxt
     }
 
-    // INDIVIDUAL FANS & GROUPS OF FANS AS WELL AS ALEXA FEELINGS COMMANDS
+    // INDIVIDUAL FANS  AS WELL AS ALEXA FEELINGS COMMANDS
     if (deviceType == "fan") {
-        gFans?.each { m -> 
-            mMatch = m.label.toLowerCase()
-            def lvlNow = m.latestValue("level")
-            if(tts.contains("${mMatch}")) {
-                if (command == "on" || command == "off") {
-                    m."$command"()
-                    if (command == "on") {
-                    outputTxt = "ok, I will $params.ptts"//outputTxt = "I have turned $command the $mMatch"
+        if (tts.contains("fans") && (command == "on" || command == "off")) {
+            gFans."$command"()
+            outputTxt = "ok, I will $params.ptts"
+            return outputTxt
+        }
+        if (tts.contains("fan") && (command == "on" || command == "off")) {  // INDIVIDUAL FANS ON/OFF
+            gFans?.each { m -> 
+                mMatch = m.label.toLowerCase()
+                def lvlNow = m.latestValue("level")
+                if(tts.contains("${mMatch}")) {
+                    if (command == "on" || command == "off") {
+                        m."$command"()
+                        outputTxt = "ok, I will $params.ptts"//outputTxt = "I have turned off the $mMatch"
+                        return outputTxt
                     }
-                    else outputTxt = "ok, I will $params.ptts"//outputTxt = "I have turned off the $mMatch"
+                }
+            }
+        }
+        if ((tts.contains(" fan")) && (command == "decrease" || command == "increase" || command == "high" || command == "medium" || command == "low")) {
+            def cHigh = parent.cHigh
+            def cMedium = parent.cMedium
+            def cLow = parent.cLow
+            def cFanLevel = parent.cFanLevel
+            def newLevel = parent.cLevel
+            gFans?.each { m ->
+                def fMatch = m.label.toLowerCase()
+                if (tts.contains("$fMatch")) {
+                    def currLevel = m?.latestValue("level")
+                    def currState = m?.latestValue("switch")
+                    log.warn "currLevel = $currLevel && currState = $currState"
+                    if ((command == "increase" || command == "decrease" || command == "high" || command == "medium" || command == "low") && newLevel == null || currLevel == null) { 
+                        outputTxt = "I'm sorry, but the $m does not support the command, $command"
+                        return outputTxt 
+                    }
+                    newLevel = cFanLevel     
+                    if (command == "increase") {
+                        newLevel =  currLevel + newLevel
+                        newLevel = newLevel < 0 ? 0 : newLevel >=100 ? 99 : newLevel
+                        m.setLevel(newLevel)
+                        outputTxt = "ok, I will $params.ptts"
+                    }
+                    else if (command == "decrease") {
+                        newLevel =  currLevel - newLevel
+                        newLevel = newLevel < 0 ? 0 : newLevel >=100 ? 99 : newLevel      
+                        m.setLevel(newLevel)
+                        outputTxt = "ok, I will $params.ptts" 
+                    }
+                    else if (command == "high") {
+                        newLevel = cHigh
+                        m.setLevel(newLevel)
+                        outputTxt = "ok, I am setting the $m to high"
+                    }
+                    else if (command == "medium") {
+                        newLevel = cMedium
+                        m.setLevel(newLevel)
+                        outputTxt = "ok, I am setting the $m to medium"
+                    }
+                    else if (command == "low") {
+                        newLevel = cLow
+                        m.setLevel(newLevel)
+                        outputTxt = "ok, I am setting the $m to low"
+                    }
                     return outputTxt
                 }
             }
-            if ((tts.contains("fan") || tts.contains("fans") || command == "on" || command == "off" || command == "decrease" || command == "increase" || command == "high" || command == "medium" || command == "low")) {
-                if (deviceType == "fan"){
-                    def cHigh = 99
-                    def cMedium = 66
-                    def cLow = 33
-                    def cFanLevel = 33
-                    def newLevel = parent.cLevel
-                    gFans?.each {deviceD -> 
-                        def currLevel = deviceD.latestValue("level")
-                        def currState = deviceD.latestValue("switch")
-                        newLevel = cFanLevel     
-                        if (command == "increase") {
-                            newLevel =  currLevel + newLevel
-                            newLevel = newLevel < 0 ? 0 : newLevel >=100 ? 99 : newLevel
-                            outputTxt = "ok, I will $params.ptts"//outputTxt = "ok, setting the $mMatch to $newLevel"
-                        }
-                        else if (command == "decrease") {
-                            newLevel =  currLevel - newLevel
-                            newLevel = newLevel < 0 ? 0 : newLevel >=100 ? 99 : newLevel      
-                           outputTxt = "ok, I will $params.ptts" // outputTxt = "ok, setting the $mMatch to $newLevel"
-                        }
-                        else if (command == "high") {newLevel = cHigh}
-                        else if (command == "medium") {newLevel = cMedium}
-                        else if (command == "low") {newLevel = cLow}
-                        else if (command == "on") {newLevel = "on"}
-                        else if (command == "off") {newLevel = "off"}
-                        if (newLevel == on || newLevel == off) {
-                            outputTxt = "ok, I will $params.ptts" //outputTxt = "Ok, I am turning $newLevel the fans in the " + app.label
-                            if (parent.trace) log.trace "deviceD = $gFans && command = $newLevel"
-                            if (newLevel == "on") { deviceD.on() }
-                            if (newLevel == "off") { deviceD.off() }
-                            else { deviceD.setLevel(newLevel) }
-                            return outputTxt}
-                        if (newLevel == cHigh || newLevel == cMedium || newLevel == cLow) {
-                            deviceD.setLevel(newLevel)
-                            if (newLevel == cHigh) { outputTxt = "Ok, I am setting the fans in the $app.label to high" }
-                            if (newLevel == cMedium) { outputTxt = "Ok, I am setting the fans in the $app.label to medium" }
-                            if (newLevel == cLow) { outputTxt = "Ok, I am setting the fans in the $app.label to low" }
-                        }
-                    }
-                    if (parent.trace) log.trace "Fans group activated: newLevel = $newLevel percent " 
-                    return outputTxt
-                }           
-                return outputTxt
-            }
         }
         return outputTxt
-    }
-
+    }                
+                            
     // GARAGE DOOR
     if (deviceType == "door") {
         gGarage?.each { m -> 
@@ -1841,16 +1896,16 @@ def deviceCmd(params, tts) {
             if (tts.contains("${mMatch}")) {
                 def status = m.currentValue("contact")
                 if (command == "open" && status == "closed") {
-                    outputTxt = "ok, I will $params.ptts" //outputTxt = "Ok, I am opening the $m"
+                    outputTxt = "ok, I will $params.ptts" 
                     m.open()
                 } else if (status == "open") {
-                    outputTxt = "ok, I will $params.ptts" //outputTxt = "It looks like the $m is already open"
+                    outputTxt = "It looks like the $m is already open"
                 } 
                 if (command == "close" && status == "open") {
-                    outputTxt = "ok, I will $params.ptts" //outputTxt = "Ok, I am closing the $m"
+                    outputTxt = "ok, I will $params.ptts" 
                     m.close()
                 } else if (status == "closed"){
-                    outputTxt = "ok, I will $params.ptts" //outputTxt = "It looks like the $m is already closed"
+                    outputTxt = "It looks like the $m is already closed"
                 }
             }
         }
@@ -1883,21 +1938,21 @@ def deviceCmd(params, tts) {
                 if(deviceType == "vent"){
                     gVents.on()
                     gVents.setLevel(100)
-                    outputTxt = "ok, I will $params.ptts" //outputTxt = "Ok, opening the vents in the ${app.label}"
+                    outputTxt = "ok, I will $params.ptts" 
                 }
                 else {
                     gShades.open()
-                    outputTxt = "ok, I will $params.ptts" //outputTxt = "Ok, opening the window coverings in the ${app.label}"
+                    outputTxt = "ok, I will $params.ptts" 
                 }
             }
             else {   
                 if(deviceType == "vent"){
                     gVents.off()
-                    outputTxt = "ok, I will $params.ptts" //outputTxt = "Ok, closing the vents in the ${app.label}"
+                    outputTxt = "ok, I will $params.ptts" 
                 }
                 else {
                     gShades.close()
-                    outputTxt = "ok, I will $params.ptts" //outputTxt = "Ok, closing the window coverings in the ${app.label}"
+                    outputTxt = "ok, I will $params.ptts" 
                 }
             }  
             return outputTxt
@@ -1917,7 +1972,7 @@ def deviceCmd(params, tts) {
                 if (command == "mute" || command == "unmute") {
                     deviceD."${command}"()
                     def volText = command == "mute" ? "muting" : command == "unmute" ? "unmuting" : "adjusting" 
-                    outputTxt = "ok, I will $params.ptts" //outputTxt = "Ok, " + volText + " the " + deviceD.label
+                    outputTxt = "ok, I will $params.ptts" 
                     return outputTxt
                 }
                 if (command == "reset" && (tts.contains("queue"))) {
@@ -1946,7 +2001,7 @@ def deviceCmd(params, tts) {
                     if (newLevel == 0 && currState == "on") {deviceD.off()}
                     else {deviceD.setLevel(newLevel)}
                 } 
-                outputTxt = "ok, I will $params.ptts" //outputTxt = "Ok, setting  " + deviceD.label + " volume to " + newLevel + " percent"
+                outputTxt = "ok, I will $params.ptts" 
                 return outputTxt
             } 
         }
@@ -2061,6 +2116,22 @@ def deviceCmd(params, tts) {
 	return outputTxt
 }
 
+
+def automationsRestore() {
+	if (gDisTime != 0) {
+    	gDisable?.on()
+        if (parent.debug) log.info "Automations have been restored after $gDisTime minutes"
+        }
+    }
+
+def notificationsRestore() {
+    if (gNotDisTime != 0) {
+    	gNotDisable?.on()
+        if (parent.debug) log.info "Notifications have been restored after $gNotDisTime minutes"
+        }
+    }
+    
+    
 /******************************************************************************************************
 SPEECH AND TEXT ALEXA RESPONSE
 ******************************************************************************************************/
@@ -2073,77 +2144,101 @@ def ttsHandler(tts) {
     def sc = childApps?.find {s -> s?.label?.toLowerCase() == tts?.toLowerCase()}
     if (sc) {
     sc?.processActions(evt)
-        if (sc.report == true && sc.message != null) {
+        if (sc.report == true && sc.message != null && sc.pistonMsg == false) {
         	def message = sc.message
             outputTxt = sc.runProfile(message, evt) 
             }
         else if (sc.scResponse) {
             outputTxt = sc.scResponse
         }
+        else if (sc.pistonMsg == true) {
+        	def message = "ok"
+            outputTxt = message
+        }
         else {outputTxt = "I'm executing the shortcut for the room, " + cm}
         return outputTxt
     }
     def s1 = childApps.find {s -> s.alias1?.toLowerCase() == tts.toLowerCase()}
     if (s1) {
-        s1.processActions(evt)//runShortcutAction()
-        if (s1.report == true && s1.message != null) {
+    	s1.processActions(evt)
+        if (s1.report == true && s1.message != null && s1.pistonMsg == false) {
         	def message = s1.message
             outputTxt = s1.runProfile(message, evt) 
             }
         else if (s1.scResponse1) {
             outputTxt = s1.scResponse1
         }
+        else if (s1.pistonMsg == true) {
+        	def message = "ok"
+            outputTxt = message
+        }
         else {outputTxt = "I'm executing the shortcut for the room, " + cm}
         return outputTxt
     }
     def s2 = childApps.find {s -> s.alias2?.toLowerCase() == tts.toLowerCase()}
     if (s2) {
-        s2.processActions(evt)//runShortcutAction()
-        if (ss2c.report == true && s2.message != null) {
+        s2.processActions(evt)
+        if (ss2c.report == true && s2.message != null && s2.pistonMsg == false) {
         	def message = s2.message
             outputTxt = s2.runProfile(message, evt) 
             }
         else if (s2.scResponse2) {
             outputTxt = s2.scResponse2
         }
+        else if (s2.pistonMsg == true) {
+        	def message = "ok"
+            outputTxt = message
+        }
         else {outputTxt = "I'm executing the shortcut for the room, " + cm}
         return outputTxt
     }
     def s3 = childApps.find {s -> s.alias3?.toLowerCase() == tts.toLowerCase()}
     if (s3) {
-        s3.processActions(evt)//runShortcutAction()
-        if (s3.report == true && s3.message != null) {
+        s3.processActions(evt)
+        if (s3.report == true && s3.message != null && s3.pistonMsg == false) {
         	def message = s3.message
             outputTxt = s3.runProfile(message, evt) 
             }
         else if (s3.scResponse3) {
             outputTxt = c3.scResponse3
         }
+        else if (s3.pistonMsg == true) {
+        	def message = "ok"
+            outputTxt = message
+        }
         else {outputTxt = "I'm executing the shortcut for the room, " + cm}
         return outputTxt
     }
     def s4 = childApps.find {s -> s.alias4?.toLowerCase() == tts.toLowerCase()}
     if (s4) {
-        s4.processActions(evt)//runShortcutAction()
-        if (s4.report == true && s4.message != null) {
+        s4.processActions(evt)
+        if (s4.report == true && s4.message != null && s4.pistonMsg == false) {
         	def message = s4.message
             outputTxt = s4.runProfile(message, evt) 
             }
         else if (s4.scResponse4) {
             outputTxt = c4.scResponse4
         }
+        else if (s4.pistonMsg == true) {
+        	def message = "ok"
+            outputTxt = message
+        }
         else {outputTxt = "I'm executing the shortcut for the room, " + cm}
         return outputTxt
     }
     def s5 = childApps.find {s -> s.alias5?.toLowerCase() == tts.toLowerCase()}
     if (s5) {
-        s5.processActions(evt)//runShortcutAction()
-        if (s5.report == true && s5.message != null) {
+        s5.processActions(evt)
+        if (s5.report == true && s5.message != null && s5.pistonMsg == false) {
         	def message = s5.message
             outputTxt = s5.runProfile(message, evt) 
             }
         else if (s5.scResponse5) {
             outputTxt = c5.scResponse5
+        }
+        else if (s5.pistonMsg == true) {
+        	def message = "ok"
+            outputTxt = message
         }
         else {outputTxt = "I'm executing the shortcut for the room, " + cm}
         return outputTxt
@@ -2192,6 +2287,7 @@ def ttsHandler(tts) {
             return outputTxt
         }
     }
+    
     if (tts.contains("repeat last message") || tts == "repeat the last message") {
         outputTxt = "The last message sent to ${app.label} was, " + state.lastMessage
         return outputTxt
@@ -2639,7 +2735,7 @@ private getCommand(tts){
         deviceType = "volume"
         }
 
-log.warn "tts has been changed to: $tts"
+//log.warn "tts has been changed to: $tts"
 //LIGHT SWITCHES & CUSTOM GROUPS
     if (gHues || gSwitches || gCustom1N || gCustom2N || gCustom3N || gCustom4N || gCustom5N){
         if (gSwitches) {
@@ -2763,11 +2859,11 @@ log.warn "tts has been changed to: $tts"
     }
     
     //Disable Switches
-    if (tts=="stop the automations" || tts?.startsWith("cut off") || tts?.startsWith("disengage") || tts?.startsWith("disable automation") || tts?.startsWith("stop turning the") || tts?.startsWith("kill the automation") || tts?.contains("kill the sensor")){
+    if (tts=="stop the automations" || tts=="stop the notifications" || tts?.startsWith("cut off") || tts?.startsWith("disengage") || tts?.startsWith("disable automation") || tts?.startsWith("stop turning the") || tts?.startsWith("kill the automation") || tts?.contains("kill the sensor")){
         command = "off"
         deviceType = "disable"
     }
-    else if (tts=="start the automations" || tts?.startsWith("cut on") || tts?.startsWith("engage") || tts?.startsWith("start turning the") || tts?.startsWith ("start the sensor")){
+    else if (tts=="start the automations" || tts=="start the notifications" || tts?.startsWith("cut on") || tts?.startsWith("engage") || tts?.startsWith("start turning the") || tts?.startsWith ("start the sensor")){
         command = "on"
         deviceType = "disable" 
     }
@@ -2794,6 +2890,7 @@ log.warn "tts has been changed to: $tts"
             command = "increase"
             deviceType = "fan" 
         }
+
         else {
             command = "undefined"
             deviceType = "fan" 

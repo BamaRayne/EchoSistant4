@@ -769,7 +769,10 @@ def actions() {
             input "remindRProfile", "enum", title: "Execute this RemindR Profile...", options:  parent.listRemindRProfiles(), multiple: false, required: false
         	input "myPiston", "enum", title: "Choose Piston...", options:  parent.parent.webCoRE_list('name'), multiple: false, required: false//,
             //    image: "https://cdn.rawgit.com/ady624/${webCoRE_handle()}/master/resources/icons/app-CoRE.png"
-        	if(!tMode){
+        		if(myPiston) {
+                input "pistonMsg", "bool", title: "Does the piston have an audio message to play back when executed?", default: false, required: false, submitOnChange: true
+                }
+            if(!tMode){
                 def modes = location.modes.name.sort()
                 input "aMode", "enum", title: "Change the Mode to", options: modes, multiple: false, required: false
             }

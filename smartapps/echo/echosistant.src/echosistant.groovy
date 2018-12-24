@@ -8,6 +8,7 @@
  
  ************************************ FOR INTERNAL USE ONLY ******************************************************
 
+ *		12/23/2018	Version: 4.6 R.0.0.4	Code clean up
  *		12/21/2018	Version: 4.6 R.0.0.3	UI Changes and bug fix in WebCoRE Piston execution	
  *		12/18/2018 	Version: 4.6 R.0.0.2e	Bug fix in SHM announcements and addition of optional restore volume on Alexa Devices, UI updates	
  *		12/18/2018 	Version: 4.6 R.0.0.2d	Bug fix
@@ -61,7 +62,7 @@ private def textVersion() {
 	def text = "1.0"
 }
 private release() {
-    def text = "Version 4.6, Revision 0.0.3"
+    def text = "Version 4.6, Revision 0.0.4"
 }
 /**********************************************************************************************************************************************/
 preferences {   
@@ -179,13 +180,13 @@ def mDefaults(){
             input "cVolLevel", "number", title: "Alexa Adjusts the Volume Level by using a scale of 1-10 (default is +/-2)", defaultValue: 2, required: false
 //            input "cTemperature", "number", title: "Alexa Automatically Adjusts temperature by using a scale of 1-10 (default is +/-1)", defaultValue: 1, required: false						
         }
-/*        section ("Fan Control") {            
+        section ("Fan Control") {            
             input "cHigh", "number", title: "Alexa Adjusts High Level to 99% by default", defaultValue: 99, required: false
             input "cMedium", "number", title: "Alexa Adjusts Medium Level to 66% by default", defaultValue: 66, required: false
             input "cLow", "number", title: "Alexa Adjusts Low Level to 33% by default", defaultValue: 33, required: false
             input "cFanLevel", "number", title: "Alexa Automatically Adjusts Ceiling Fans by using a scale of 1-100 (default is +/-33%)", defaultValue: 33, required: false
         }
-*/       section ("Alexa Voice Settings") {            
+       section ("Alexa Voice Settings") {            
             input "pDisableContCmds", "bool", title: "Disable Conversation (Alexa no longer prompts for additional commands except for 'try again' if an error ocurs)?", required: false, defaultValue: false
             input "pEnableMuteAlexa", "bool", title: "Disable Feedback (Silence Alexa - it no longer provides any responses)?", required: false, defaultValue: false
             input "pUseShort", "bool", title: "Use Short Alexa Answers (Alexa provides quick answers)?", required: false, defaultValue: false
