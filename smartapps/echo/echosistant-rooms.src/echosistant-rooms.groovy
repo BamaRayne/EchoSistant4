@@ -1482,22 +1482,6 @@ if (roomDevice != null) {
     	return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
 	}
 
-def hours(tts) {
-            	def timer = tts.replaceAll("\\b and.*\\b", "")
-                timer = timer.replaceAll("\\D+","").toInteger();
-                state.timerHours = timer * 3600 
-                timer = state.timerHours
-                return timer
-                }
-
-def minutes(tts) {
-            	def timer = tts.replaceAll("\\b and.*\\b", "")
-                timer = tts.replaceAll("\\b${timer}\\b", "")
-                timer = timer.replaceAll("\\D+","").toInteger();
-                timer = timer * 60
-                state.timerMins = timer 
-                return timer
-                }
 /******************************************************************************************************
 	INCOMING TTS PROCESSING FOR DELAYS AND COMMANDS
 ******************************************************************************************************/
@@ -1507,25 +1491,25 @@ def profileEvaluate(params) {
 	def outputTxt = null
 
 		// PARSE INCOMING TTS INTO INDIVIDUAL COMMANDS  
-/*    	if (tts.contains("and then")) {  //skips everything just to send a mesage
+    	if (tts.startsWith("hey ")) {  //skips everything just to send a mesage
         	def ttsText = tts.toLowerCase()
             ttsHandler(tts)
             outputTxt = "Ok, your message has been sent to $app.label"
         	return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
             }
-            else {  // Parser
-   */ 			def newTts = tts.split("and").each { t -> 
+            else {  // PARSER BEGINS
+    			def newTts = tts.split("and").each { t -> 
         		def ttsText = t.toLowerCase()
         		log.info "ttsText is: $ttsText"
 
 
         // PARSE OUT DELAY TIME 
-        if ((ttsText.findAll("[0-999999]")) && (tts.contains("minute") || tts.contains("minutes") || tts.contains("hours"))) {
+        if ((ttsText.findAll("[0-999999]")) && (tts.contains("minute") || tts.contains("minutes") || tts.contains("hours") || tts.contains(" a.m.") || tts.contains(" p.m."))) {
         //    def timer = ttsText.replaceAll("\\D+","").toInteger();
             ttsText = ttsText.replaceAll("\\b in.*\\b", "")
             state.timerHours = null
             state.timerMins = null
-            if (tts.contains("hours") && (!tts.contains("minutes") || !tts.contains("minute"))) { 
+            if ((tts.contains("hour") || tts.contains("hours")) && (!tts.contains("minutes") || !tts.contains("minute"))) { 
             	tts = tts.replaceAll("\\b and.*\\b", "")
                 def timer = tts.replaceAll("\\D+","").toInteger();
                 log.warn "hours timer = $timer"
@@ -1535,7 +1519,7 @@ def profileEvaluate(params) {
                 outputTxt = "Ok, $ttsText"
                 return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
                 }
-            if (tts.contains("minutes") && (!tts.contains("hours") || !tts.contains("hour"))) {
+            if ((tts.contains("minutes") || tts.contains("minute")) && (!tts.contains("hours") || !tts.contains("hour"))) {
             	tts = tts.replaceAll("\\b minutes*\\b", "")
                 def timer = tts.replaceAll("\\D+","").toInteger();
                 log.warn "minutes timer = $timer"
@@ -1545,7 +1529,7 @@ def profileEvaluate(params) {
                 outputTxt = "Ok, $ttsText"
                 return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
                 }
-            if (tts.contains("hours") && tts.contains("minutes")) {
+            if ((tts.contains("hours") || tts.contains("hour")) && (tts.contains.("minute") || tts.contains("minutes"))) {
             	state.timerHours = hours(tts)
                 state.timerMins = minutes(tts)
                 def timer = state.timerHours + state.timerMins
@@ -1554,47 +1538,56 @@ def profileEvaluate(params) {
                 outputTxt = "Ok, $ttsText"
                 return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
                 }
-           //     timer = "${timerHours}" + "${timerMins}"
- /*           	if ("$timer" <= 1) {
-                	outputTxt = "Ok, I will $ttsText"
-                    state.resetTTS1 = ttsText
-            		runIn(timer*60, resetTts1, [overwrite:false])
-                    log.debug "1st delay time will perform: $state.resetTTS1"
-        			return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
-            	}
-            	if ("$timer" > 1) { 
-                	outputTxt = "Ok, I will $tts" 
-            		state.resetTTS2 = ttsText
-            		runIn(timer*60, resetTts2, [overwrite:false])
-                    log.debug "2nd delay time will perform: $state.resetTTS2"
-        			return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
-            	} */
-            //	state.resetTTS = ttsText
-            //	runIn(timer*60, resetTts, [overwrite:false])
-            	}
+			if (tts.contains(" a.m.") || tts.contains(" p.m.")) {
+            	log.warn "a schedule has been detected"
+                outputTxt = "I'm sorry, but the ability to schedule an action at a specific time has not been implemented at this time. It is currently being developed"
+                return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
+                }
+			}
+
         	else {
         	tts = ttsText
             outputTxt = beginProcess(params, tts)
         	return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
         	} 
 		}
-//    }
+    }
 	return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
 }    
 
+	// CREATES HOURS TIMER FROM TTS
+def hours(tts) {
+    def timer = tts.replaceAll("\\b and.*\\b", "")
+    timer = timer.replaceAll("\\D+","").toInteger();
+    state.timerHours = timer * 3600 
+    timer = state.timerHours
+    return timer
+}
+
+// CREATES MINUTES TIMER FROM TTS
+def minutes(tts) {
+    def timer = tts.replaceAll("\\b and.*\\b", "")
+    timer = tts.replaceAll("\\b${timer}\\b", "")
+    timer = timer.replaceAll("\\D+","").toInteger();
+    timer = timer * 60
+    state.timerMins = timer 
+    return timer
+}
+
+// SCHEDULES TIMERS AND ORGANIZES DELAYED ACTIONS
 def timerMaker(timer, tts) {
     def outputTxt
     if ("$timer" <= 1) {
         outputTxt = "Ok, I will $ttsText"
         state.resetTTS1 = tts
-        runIn(timer, resetTts1, [overwrite:false])
+        runIn(timer, resetTts1, [overwrite:true])
         log.debug "1st delay time will perform: $state.resetTTS1"
         return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
     }
     if ("$timer" > 1) { 
         outputTxt = "Ok, I will $tts" 
         state.resetTTS2 = tts
-        runIn(timer, resetTts2, [overwrite:false])
+        runIn(timer, resetTts2, [overwrite:true])
         log.debug "2nd delay time will perform: $state.resetTTS2"
         return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
     }
