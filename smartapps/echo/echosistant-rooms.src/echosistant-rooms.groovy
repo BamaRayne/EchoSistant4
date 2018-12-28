@@ -1507,9 +1507,9 @@ def profileEvaluate(params) {
         if ((ttsText.findAll("[0-999999]")) && (tts.contains("minute") || tts.contains("minutes"))) {
             def timer = ttsText.replaceAll("\\D+","").toInteger();
             ttsText = ttsText.replaceAll("\\b in.*\\b", "")
-				if ("$timer" <= 1) {
-                	outputTxt = "Ok, I will $ttsText" 
-            		state.resetTTS1 = ttsText
+            	if ("$timer" <= 1) {
+                	outputTxt = "Ok, I will $ttsText"
+                    state.resetTTS1 = ttsText
             		runIn(timer*60, resetTts1, [overwrite:false])
                     log.debug "1st delay time will perform: $state.resetTTS1"
         			return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
@@ -2145,7 +2145,7 @@ def ttsHandler(tts) {
     log.debug " ttshandler settings: pAlexaCustResp=${pAlexaCustResp},pAlexaRepeat=${pAlexaRepeat},tts=${tts}"
 	
     def sc = childApps?.find {s -> s?.label?.toLowerCase() == tts?.toLowerCase()}
-    log.debug "sc = $sc.label && tts = $tts"
+//    log.debug "sc = $sc.label && tts = $tts"
     if (sc) {
     sc?.processActions(evt)
         if (sc.report == true && sc.message != null && sc.pistonMsg == false) {
