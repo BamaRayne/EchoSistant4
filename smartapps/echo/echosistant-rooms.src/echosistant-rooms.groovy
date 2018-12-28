@@ -1,6 +1,7 @@
 /* 
 * EchoSistant Rooms Profile - EchoSistant Add-on
 *
+*		12/28/2018		Version:4.6 R.0.3.1		More expansion on the Delay commands
 *		12/27/2018		Version:4.6 R.0.3.0		Tweaking method to allow "Alexa, wake me up at 3:45 in the bedroom" type of commands.
 *		12/24/2018		Version:4.6 R.0.2.9		Fixed bug in running Logic Blockz from Alexa
 *		12/23/2018		Version:4.6 R.0.2.8		Fixed problem with adjusting dimmers group using Alexa Feels commands
@@ -76,7 +77,7 @@ private release() {
 	def text = "R.0.4.6"
 }
 private revision(text) {
-	text = "Version 4.6, Revision 0.3.0"
+	text = "Version 4.6, Revision 0.3.1"
     state.version = "${text}"
     return text
     }
@@ -1481,7 +1482,22 @@ if (roomDevice != null) {
     	return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
 	}
 
+def hours(tts) {
+            	def timer = tts.replaceAll("\\b and.*\\b", "")
+                timer = timer.replaceAll("\\D+","").toInteger();
+                state.timerHours = timer * 3600 
+                timer = state.timerHours
+                return timer
+                }
 
+def minutes(tts) {
+            	def timer = tts.replaceAll("\\b and.*\\b", "")
+                timer = tts.replaceAll("\\b${timer}\\b", "")
+                timer = timer.replaceAll("\\D+","").toInteger();
+                timer = timer * 60
+                state.timerMins = timer 
+                return timer
+                }
 /******************************************************************************************************
 	INCOMING TTS PROCESSING FOR DELAYS AND COMMANDS
 ******************************************************************************************************/
@@ -1504,10 +1520,42 @@ def profileEvaluate(params) {
 
 
         // PARSE OUT DELAY TIME 
-        if ((ttsText.findAll("[0-999999]")) && (tts.contains("minute") || tts.contains("minutes"))) {
-            def timer = ttsText.replaceAll("\\D+","").toInteger();
+        if ((ttsText.findAll("[0-999999]")) && (tts.contains("minute") || tts.contains("minutes") || tts.contains("hours"))) {
+        //    def timer = ttsText.replaceAll("\\D+","").toInteger();
             ttsText = ttsText.replaceAll("\\b in.*\\b", "")
-            	if ("$timer" <= 1) {
+            state.timerHours = null
+            state.timerMins = null
+            if (tts.contains("hours") && (!tts.contains("minutes") || !tts.contains("minute"))) { 
+            	tts = tts.replaceAll("\\b and.*\\b", "")
+                def timer = tts.replaceAll("\\D+","").toInteger();
+                log.warn "hours timer = $timer"
+                state.timerHours = timer * 3600 
+                timer = state.timerHours
+                timerMaker(timer, tts)
+                outputTxt = "Ok, $ttsText"
+                return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
+                }
+            if (tts.contains("minutes") && (!tts.contains("hours") || !tts.contains("hour"))) {
+            	tts = tts.replaceAll("\\b minutes*\\b", "")
+                def timer = tts.replaceAll("\\D+","").toInteger();
+                log.warn "minutes timer = $timer"
+                state.timerMins = timer * 60 
+                timer = state.timerMins
+                timerMaker(timer, tts)
+                outputTxt = "Ok, $ttsText"
+                return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
+                }
+            if (tts.contains("hours") && tts.contains("minutes")) {
+            	state.timerHours = hours(tts)
+                state.timerMins = minutes(tts)
+                def timer = state.timerHours + state.timerMins
+				log.debug "Hours/Minutes timer = $timer minutes or $timer/60 hours"
+                timerMaker(timer, tts)
+                outputTxt = "Ok, $ttsText"
+                return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
+                }
+           //     timer = "${timerHours}" + "${timerMins}"
+ /*           	if ("$timer" <= 1) {
                 	outputTxt = "Ok, I will $ttsText"
                     state.resetTTS1 = ttsText
             		runIn(timer*60, resetTts1, [overwrite:false])
@@ -1520,7 +1568,7 @@ def profileEvaluate(params) {
             		runIn(timer*60, resetTts2, [overwrite:false])
                     log.debug "2nd delay time will perform: $state.resetTTS2"
         			return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
-            	}
+            	} */
             //	state.resetTTS = ttsText
             //	runIn(timer*60, resetTts, [overwrite:false])
             	}
@@ -1533,6 +1581,24 @@ def profileEvaluate(params) {
 //    }
 	return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
 }    
+
+def timerMaker(timer, tts) {
+    def outputTxt
+    if ("$timer" <= 1) {
+        outputTxt = "Ok, I will $ttsText"
+        state.resetTTS1 = tts
+        runIn(timer, resetTts1, [overwrite:false])
+        log.debug "1st delay time will perform: $state.resetTTS1"
+        return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
+    }
+    if ("$timer" > 1) { 
+        outputTxt = "Ok, I will $tts" 
+        state.resetTTS2 = tts
+        runIn(timer, resetTts2, [overwrite:false])
+        log.debug "2nd delay time will perform: $state.resetTTS2"
+        return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
+    }
+}
 
 // 1st DELAYED COMMAND STARTS HERE AFTER DELAY
 def resetTts1() {
@@ -2145,7 +2211,6 @@ def ttsHandler(tts) {
     log.debug " ttshandler settings: pAlexaCustResp=${pAlexaCustResp},pAlexaRepeat=${pAlexaRepeat},tts=${tts}"
 	
     def sc = childApps?.find {s -> s?.label?.toLowerCase() == tts?.toLowerCase()}
-//    log.debug "sc = $sc.label && tts = $tts"
     if (sc) {
     sc?.processActions(evt)
         if (sc.report == true && sc.message != null && sc.pistonMsg == false) {
