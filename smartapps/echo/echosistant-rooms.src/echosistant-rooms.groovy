@@ -1,6 +1,7 @@
 /* 
 * EchoSistant Rooms Profile - EchoSistant Add-on
 *
+*		12/30/2018		Version:4.6 R.0.3.2		Minor bug fixes in command structure
 *		12/28/2018		Version:4.6 R.0.3.1		More expansion on the Delay commands
 *		12/27/2018		Version:4.6 R.0.3.0		Tweaking method to allow "Alexa, wake me up at 3:45 in the bedroom" type of commands.
 *		12/24/2018		Version:4.6 R.0.2.9		Fixed bug in running Logic Blockz from Alexa
@@ -77,7 +78,7 @@ private release() {
 	def text = "R.0.4.6"
 }
 private revision(text) {
-	text = "Version 4.6, Revision 0.3.1"
+	text = "Version 4.6, Revision 0.3.2"
     state.version = "${text}"
     return text
     }
@@ -566,11 +567,11 @@ def cDevices() {
         	input "mMode", "enum", title: "Choose Modes to be used by this Room...", options: location.modes.name.sort(), multiple: true, required: false 
             }
         section ("Notifications and Automations Kill Switches"){
-            input "gDisable", "capability.switch", title: "Group Automation & Disable Switches (disable = off, enable = on)", multiple: true, required: false
+            input "gDisable", "capability.switch", title: "Group Automation & Disable Switches (disable = off, enable = on)", multiple: true, required: false, submitOnChange: true
             if (gDisable) { 
                 input "gDisTime", "number", title: "Automatically restore Automations after this number of minutes", defaultValue: 0, required: false
             }
-            input "gNotDisable", "capability.switch", title: "Notifications Disable Switches (disable = off, enable = on)", multiple: true, required: false
+            input "gNotDisable", "capability.switch", title: "Notifications Disable Switches (disable = off, enable = on)", multiple: true, required: false, submitOnChange: true
             if (gNotDisable) {
                 input "gNotDisTime", "number", title: "Automaticaly restore Notifications after this number of minutes", defaultValue: 0, required: false
             }
@@ -1488,8 +1489,20 @@ if (roomDevice != null) {
 def profileEvaluate(params) {
     log.info "The profileEvaluate ($params.pintentName) has been activated and received this: $params.ptts"
     def tts = params.ptts.toLowerCase()
-	def outputTxt = null
-
+//	def outputTxt = null
+    //Output Variables
+    def pTryAgain = true
+    def pPIN = false
+    def pShort = false
+    def pContCmds = false
+    def String pContCmdsR = (String) null
+    def String outputTxt = (String) null 
+    def String scheduler = (String) null     
+    def String ttsR = (String) null
+    def String command = (String) null
+    def String deviceType = (String) null
+    def String colorMatch = (String) null
+	
 		// PARSE INCOMING TTS INTO INDIVIDUAL COMMANDS  
     	if (tts.startsWith("hey ")) {  //skips everything just to send a mesage
         	def ttsText = tts.toLowerCase()
@@ -1516,7 +1529,7 @@ def profileEvaluate(params) {
                 state.timerHours = timer * 3600 
                 timer = state.timerHours
                 timerMaker(timer, tts)
-                outputTxt = "Ok, $ttsText"
+                outputTxt = "Ok, I will $params.ptts"
                 return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
                 }
             if ((tts.contains("minutes") || tts.contains("minute")) && (!tts.contains("hours") || !tts.contains("hour"))) {
@@ -1526,7 +1539,7 @@ def profileEvaluate(params) {
                 state.timerMins = timer * 60 
                 timer = state.timerMins
                 timerMaker(timer, tts)
-                outputTxt = "Ok, $ttsText"
+                outputTxt = "Ok, I will $params.ptts"
                 return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
                 }
             if ((tts.contains("hours") || tts.contains("hour")) && (tts.contains.("minute") || tts.contains("minutes"))) {
@@ -1536,13 +1549,19 @@ def profileEvaluate(params) {
 				log.debug "Hours/Minutes timer = $timer minutes or $timer/60 hours"
                 timerMaker(timer, tts)
                 outputTxt = "Ok, $ttsText"
-                return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
+                return outputTxt //return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
                 }
-			if (tts.contains(" a.m.") || tts.contains(" p.m.")) {
-            	log.warn "a schedule has been detected"
-                outputTxt = "I'm sorry, but the ability to schedule an action at a specific time has not been implemented at this time. It is currently being developed"
+/*			if (tts.contains(" a.m.") || tts.contains(" p.m.")) {
+                state.resetTTS1 = tts
+                log.warn "hours = " + hoursAdv(tts)
+                schedule("01 15 ${hoursAdv(tts)} ? * *", resetTts1) 
+                log.warn "a schedule has been detected: $timer.  state.timerHours = $state.timerHours && state.timerMins = $state.timerMins"
+          
+          
+                outputTxt = "Advanced scheduling being tested"
+                //outputTxt = "I'm sorry, but the ability to schedule an action at a specific time has not been implemented at this time. It is currently being developed"
                 return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
-                }
+                }*/
 			}
 
         	else {
@@ -1555,7 +1574,7 @@ def profileEvaluate(params) {
 	return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
 }    
 
-	// CREATES HOURS TIMER FROM TTS
+// CREATES HOURS TIMER FROM TTS
 def hours(tts) {
     def timer = tts.replaceAll("\\b and.*\\b", "")
     timer = timer.replaceAll("\\D+","").toInteger();
@@ -1570,6 +1589,23 @@ def minutes(tts) {
     timer = tts.replaceAll("\\b${timer}\\b", "")
     timer = timer.replaceAll("\\D+","").toInteger();
     timer = timer * 60
+    state.timerMins = timer 
+    return timer
+}
+
+// CREATES TIMERS FOR CRON
+def hoursAdv(tts) {
+	tts = tts.replaceAll("\\D+","")//.toInteger();  // Removes everything except the numbers
+    def timer = tts.split(/\d\d/).dropRight(2)
+ //   timer = timer.replaceAll("[^a-zA-Z0-9,.]+'","")
+    log.debug "tts trimmed is: $timer"
+    return timer
+}
+def minutesAdv(tts) {
+    def timer = tts.replaceAll("\\b and.*\\b", "")
+    timer = tts.replaceAll("\\b${timer}\\b", "")
+    timer = timer.replaceAll("\\D+","").toInteger();
+    timer = timer 
     state.timerMins = timer 
     return timer
 }
@@ -1727,23 +1763,44 @@ def deviceCmd(params, tts) {
     // DISABLE SWITCHES
     if (deviceType == "disable" && tts.contains("automations")){
         gDisable?."${command}"()
-        if (gDisTime > 0) { runIn(gDisTime*60, "automationsRestore") 
-        outputTxt = "ok, I will $params.ptts in the $app.label, and they will be automatically restored in $gDisTime minute" + ("$gDisTime" > 1 ? "s" : "") }
-        if (!gDisTime == 0) { outputTxt = "ok, I will $params.ptts in the $app.label" }
+        	if ("$gDisTime" >= 1 && "$command" == "off") { 
+        		runIn(gDisTime*60, "automationsRestore")
+        		outputTxt = "ok, I will $params.ptts in the $app.label, and they will be automatically restored in $gDisTime minute" + ("$gDisTime" > 1 ? "s" : "")
+                return outputTxt
+                }
+        	if (gDisTime == 0 && "$command" == "off") { 
+            	outputTxt = "ok, I will $params.ptts in the $app.label, they will need to be restored manually." 
+                }
         pContCmdsR = "profile"
+        	if ("$command" == "on") {
+            	unschedule(automationsRestore)
+        		outputTxt = "ok, I will $params.ptts in the $app.label"
+                
+                }
         return outputTxt                                  
     	}
      
     // NOTIFICATIONS DISABLE SWITCHES
     if (deviceType == "disable" && tts.contains("notifications")){
         gNotDisable?."${command}"()
-        if (gNotDisTime > 0) { runIn(gNotDisTime*60, "notificationsRestore")
-        outputTxt = "ok, I will $params.ptts in the $app.label, and they will be automatically restored in $gNotDisTime minutes" + ("$gNotDisTime" > 1 ? "s" : "") }
-        if (!gNotDisTime == 0) { outputTxt = "ok, I will $params.ptts in the $app.label" }
+        log.debug "command is: $command, reset time is: $gNotDisTime"
+        	if ("$gNotDisTime" >= 1 && "$command" == "off") { 
+        		runIn(gNotDisTime*60, "notificationsRestore")
+        		outputTxt = "ok, I will $params.ptts in the $app.label, and they will be automatically restored in $gNotDisTime minute" + ("$gNotDisTime" > 1 ? "s" : "")
+                return outputTxt
+                }
+        	if (gNotDisTime == 0 && "$command" == "off") { 
+            	outputTxt = "ok, I will $params.ptts in the $app.label, they will need to be restored manually." 
+                }
         pContCmdsR = "profile"
+        	if ("$command" == "on") {
+            	unschedule(notificationsRestore)
+        		outputTxt = "ok, I will $params.ptts in the $app.label"
+                }
         return outputTxt                                  
     	}
-     // COLORED LIGHTS - INDIVIDUAL
+
+	// COLORED LIGHTS - INDIVIDUAL
     if (deviceType == "color") {
         if (gHues?.size()>0) {
             gHues?.each { c ->
