@@ -383,8 +383,10 @@ def installed() {
     //Reminders
     state.esEvent = [:]
 }
-def updated() { 
+def updated() {
+	
 	log.warn "-->  Parent App Version: " + release()
+    log.warn "-->  Child App Version: $state.childRevision"
     if (debug) log.debug "Updated with settings: ${settings}"
 //    log.debug "AlexaJSON = ${atomicState.alexaJSON}"
 //    log.debug "Alexa Devices = ${atomicState.alexaJSON.devices.accountName}"
@@ -409,6 +411,7 @@ def updated() {
     initialize()
 }
 def initialize() {
+		state.childRevision = null
 //	state.cookie = getCookie1()
         state.alexa = null
 	    state.amazon = null
