@@ -1,6 +1,7 @@
 /* 
 * EchoSistant Rooms Profile - EchoSistant Add-on
 *
+*		01/09/2019		Version:4.6 R.0.3.7		Bug fix in scheduling
 *		01/09/2019		Version:4.6 R.0.3.6		Added Verbal specific time scheduling to actions & ability to turn on/off device for xx minutes then restore
 *		01/06/2019		Version:4.6 R.0.3.5		Improvements in the delay controls
 *		01/03/2019		Version:4.6 R.0.3.4		Reformat of UI for simplification of app setup
@@ -83,7 +84,7 @@ private release() {
 	def text = "R.0.4.6"
 }
 private revision(text) {
-	text = "Version 4.6, Revision 0.3.6"
+	text = "Version 4.6, Revision 0.3.7"
     state.version = "${text}"
     return text
     }
@@ -1507,7 +1508,7 @@ def profileEvaluate(params) {
             def timer = tts.replaceAll("\\D+","").toInteger();
             tts = tts1
             outputTxt = timerMaker(timer, tts, params)
-           // outputTxt = "Ok, I will $params.ptts"
+            //outputTxt = "Ok, I will $params.ptts"
             return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
         }       
 
@@ -1628,7 +1629,7 @@ def timerMaker(timer, tts, params) {
             hrTime = hrTime + 12
             log.warn "hrTime is: $hrTime"
             }
-        if ("$hrTime" == "12") { 
+        if ("$hrTime" == "12" && tts.contains("a.m.")) { 
         	hrTime = hrTime as BigDecimal 
             hrTime = hrTime - 12
             log.warn "hrTime is: $hrTime"
@@ -1654,7 +1655,7 @@ def timerMaker(timer, tts, params) {
         String alarmTime = "$hrTime:$mnTime"
         log.debug "alarmTime is: $alarmTime"
         echoDevice.createAlarm(alarmLbl, alarmDate, alarmTime)
-        def result = "I am creating an alarm in the $app.label for $alarmTime on $alarmDate"
+        def result = "Ok, I am creating an alarm in the $app.label for $alarmTime on $alarmDate"
         log.warn "$result"
         return result
         }           
@@ -2533,16 +2534,6 @@ def ttsHandler(tts) {
         outputTxt = "Salutations and Congratulations! You have successfully completed the installation of EchoSistant" 
         return outputTxt  
     }
-    
-/*    if (tts.contains("create an alarm")) {
-    	log.warn "I am creating an alarm"
-        String alarmLbl = "Test Alarm"
-        String alarmDate = "2018-12-31"
-        String alarmTime = "17:15"
-        echoDevice.createAlarm(alarmLbl, alarmDate, alarmTime)
-        outputTxt = "I am creating an alarm in the $app.label"
-        return outputTxt
-        }*/
     
     if (tts?.contains("do not disturb")) {
         log.info "setting DnD start"
