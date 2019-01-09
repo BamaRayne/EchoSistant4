@@ -1,6 +1,7 @@
 /* 
 * EchoSistant Rooms Profile - EchoSistant Add-on
 *
+*		01/09/2019		Version:4.6 R.0.3.6		Added Verbal specific time scheduling to actions & ability to turn on/off device for xx minutes then restore
 *		01/06/2019		Version:4.6 R.0.3.5		Improvements in the delay controls
 *		01/03/2019		Version:4.6 R.0.3.4		Reformat of UI for simplification of app setup
 *		01/02/2019		Version:4.6 R.0.3.3		Added ability to control individual automation/notification switches in group. 
@@ -82,7 +83,7 @@ private release() {
 	def text = "R.0.4.6"
 }
 private revision(text) {
-	text = "Version 4.6, Revision 0.3.5"
+	text = "Version 4.6, Revision 0.3.6"
     state.version = "${text}"
     return text
     }
@@ -1463,7 +1464,7 @@ def profileEvaluate(params) {
         outputTxt = "Ok, your message has been sent to $app.label"
         return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
     }			
-
+            
     // PARSE OUT DELAY TIME 
     else if ((tts.findAll("[0-999999]")) && (tts.contains("minute") || tts.contains("minutes") || tts.contains("hour") || tts.contains("hours") || tts.contains(" a.m.") || tts.contains(" p.m."))) {
         //  def timer = ttsText.replaceAll("\\D+","").toInteger();
@@ -1471,20 +1472,59 @@ def profileEvaluate(params) {
         //     ttsText = ttsText.replaceAll("\\b in.*\\b", "") 
         state.timerHours = 0
         state.timerMins = 0
-        
+		
+        // ALLOWS TURN ON/OFF OF LIGHT FOR XX AMOUNT OF TIME AND THEN IT IS RESTORED
+        if (tts.contains("for") && ((tts.contains("minute") || tts.contains("minutes")))) {
+                def tts1 = tts.replaceAll("\\b for .*\\b", "")
+                log.warn "The tts is now: $tts"
+                def newttsText = tts.replaceAll("\\b${tts1}\\b", "")
+                newttsText = 0 + newttsText
+                def timer = newttsText.replaceAll("\\D+","").toInteger();
+                log.warn "minutes timer = $timer"
+                state.timerMins = timer * 60 
+                timer = state.timerMins
+                tts = tts1
+                beginProcess(params, tts)
+                    if (tts.contains("turn on")) {
+                    log.info "tts contains 'ON'"
+                    	tts = tts.replaceAll("turn on ", "turn off ")
+                		timerMaker(timer, tts, params)
+                        }
+                    else if (tts.contains("turn off")) {
+                    log.info "tts contains 'OFF'"
+                    	tts = tts.replaceAll("turn off ", "turn on ")
+                        log.info "test method tts is now $tts"
+                        timerMaker(timer, tts, params)
+                        }
+                outputTxt = "Ok, I will $params.ptts"
+                timerMaker(timer, tts, params)
+                return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
+            }
+		
+        // SCHEDULES A CRON TIMER TO TURN ON/OFF LIGHTS AT A SPECIFIC TIME
+        if (tts.contains("a.m.") || tts.contains("p.m.") || tts.contains("create an alarm ")) {
+            def tts1 = tts.replaceAll("\\b in .*\\b", "")
+            def timer = tts.replaceAll("\\D+","").toInteger();
+            tts = tts1
+            outputTxt = timerMaker(timer, tts, params)
+           // outputTxt = "Ok, I will $params.ptts"
+            return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
+        }       
+
+        // SCHEDULES A DELAY OF HOURS AND MINUTES
         if ((tts.contains("hours") || tts.contains("hour")) && (tts.contains("minute") || tts.contains("minutes"))) {
-            log.warn "we have made it to hours and minutes"
             state.timerHours = hours(tts)
             state.timerMins = minutes(tts)
             def tts1 = tts.replaceAll("\\b in .*\\b", "")
             def timer = state.timerHours + state.timerMins
             log.debug "Hours/Minutes timer = $timer minutes or $timer/60 hours"
             tts = tts1
-            timerMaker(timer, tts)
+            timerMaker(timer, tts, params)
             outputTxt = "Ok, I will $params.ptts"
             return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
         }
 
+        // SCHEDULES A DELAY OF HOURS ONLY
         if ((tts.contains("hour") || tts.contains("hours")) && (!tts.contains("minutes") || !tts.contains("minute"))) { 
             def newTts = tts.split("and").each { t -> 
                 tts = t.toLowerCase()
@@ -1496,12 +1536,13 @@ def profileEvaluate(params) {
                 log.warn "hours timer = $timer"
                 state.timerHours = timer * 3600 
                 timer = state.timerHours
-                timerMaker(timer, tts)
+                timerMaker(timer, tts, params)
                 outputTxt = "Ok, I will $params.ptts"
                 return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
             }
         }
 
+        // SCHEDULES A DELAY OF MINUTES ONLY
         if ((tts.contains("minute") || tts.contains("minutes")) && (!tts.contains("hours") || !tts.contains("hour"))) {
             def newTts = tts.split("and").each { t -> 
                 tts = t.toLowerCase()
@@ -1514,23 +1555,13 @@ def profileEvaluate(params) {
                 state.timerMins = timer * 60 
                 timer = state.timerMins
                 tts = tts1
-                timerMaker(timer, tts)
+            //    if (timer == "0") {
+                	
+                timerMaker(timer, tts, params)
                 outputTxt = "Ok, I will $params.ptts"
                 return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
             }
         }    
-
-        /*			if (tts.contains(" a.m.") || tts.contains(" p.m.")) {
-                state.resetTTS1 = tts
-                log.warn "hours = " + hoursAdv(tts)
-                schedule("01 15 ${hoursAdv(tts)} ? * *", resetTts1) 
-                log.warn "a schedule has been detected: $timer.  state.timerHours = $state.timerHours && state.timerMins = $state.timerMins"
-          		outputTxt = "Advanced scheduling being tested"
-                //outputTxt = "I'm sorry, but the ability to schedule an action at a specific time has not been implemented at this time. It is currently being developed"
-                return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
-                }*/
-
-
     }
     else {  // PARSER BEGINS - SPLITS INCOMING TTS INTO A LIST OF COMMANDS
         def newTts = tts.split("and").each { t -> 
@@ -1548,7 +1579,6 @@ def profileEvaluate(params) {
 def hours(tts) {
     state.hrTimer = tts.replaceAll("\\band.*\\b", "")
     def testing = (state.hrTimer.findAll("[0-999999]"))
-    log.warn "testing is $testing"
     def timer = state.hrTimer.replaceAll("\\D+","").toInteger();
     state.timerHours = timer * 3600 
     timer = state.timerHours
@@ -1564,59 +1594,121 @@ def minutes(tts) {
     return timer
 }
 
-// CREATES TIMERS FOR CRON
-/*def hoursAdv(ttsText) {
-	ttsText = ttsText.replaceAll("\\D+","")//.toInteger();  // Removes everything except the numbers
-    def timer = ttsText.split(/\d\d/).dropRight(2)
- //   timer = timer.replaceAll("[^a-zA-Z0-9,.]+'","")
-    log.debug "tts trimmed is: $timer"
-    return timer
-}
-def minutesAdv(ttsText) {
-    def timer = ttsText.replaceAll("\\b and.*\\b", "")
-    timer = ttsText.replaceAll("\\b${timer}\\b", "")
-    timer = timer.replaceAll("\\D+","").toInteger();
-    timer = timer 
-    state.timerMins = timer 
-    return timer
-}
-*/
 
 // SCHEDULES TIMERS AND ORGANIZES DELAYED ACTIONS
-def timerMaker(timer, tts) {
-    def outputTxt
+def timerMaker(timer, tts, params) {
     log.warn "timer is: $timer in timerMaker"
+	def ptts = params.ptts
+    def outputTxt
+	if (tts.contains(" for")) {
+    	outputTxt = "Ok, I will $tts"
+        state.resetTTS4 = tts
+        runIn(timer, resetTts4, [overwrite:false])
+        return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
+    	}
+
+    if (tts.contains("a.m.") || tts.contains("p.m.") || tts.contains("create an alarm ")) {
+                
+        def timerL = "$timer".length()
+        if ("$timerL" == "3") {
+        	timer = "0" + timer
+            }
+            else if ("$timerL" == "1") {
+            timer = "0" + timer + "00"
+            }
+            else if ("$timerL" < "3") {
+            	timer = timer + "00"
+                }
+        timer = timer.toString()
+        def mnTime = timer.substring(2)
+        def hrTime = timer[-4..-3]
+        def outputhr = hrTime
+        if ("$hrTime" <= "11" && tts.contains("p.m.")) {
+        	hrTime = hrTime as BigDecimal 
+            hrTime = hrTime + 12
+            log.warn "hrTime is: $hrTime"
+            }
+        if ("$hrTime" == "12") { 
+        	hrTime = hrTime as BigDecimal 
+            hrTime = hrTime - 12
+            log.warn "hrTime is: $hrTime"
+            }
+            
+        tts = tts.replaceAll("\\b at.*|at \\b", "")
+        state.resetTTS5 = tts
+        log.debug "tts = $state.resetTTS5"
+      //  schedule("0 $mnTime $hrTime * * ?", resetTts5)
+		
+		def yyyy = new Date(now()).format("yyyy")
+		def MM = new Date(now()).format("MM")
+		def dd = new Date(now()).format("dd")
+        def time = hrTime+":" + mnTime+":" + "00"
+        def timeSchedule = hhmmss(time)
+        def schedule = "${yyyy}-${MM}-${dd}T${timeSchedule}"
+		runOnce(schedule, resetTts5)
+	
+    if (tts.contains("create an alarm ")) {
+    	log.warn "I am creating an alarm"
+        String alarmLbl = "tts"
+        String alarmDate = "${yyyy}-${MM}-${dd}"
+        String alarmTime = "$hrTime:$mnTime"
+        log.debug "alarmTime is: $alarmTime"
+        echoDevice.createAlarm(alarmLbl, alarmDate, alarmTime)
+        def result = "I am creating an alarm in the $app.label for $alarmTime on $alarmDate"
+        log.warn "$result"
+        return result
+        }           
+
+	log.debug "5th delay time will perform: $state.resetTTS5"
+			if (ptts.contains(" a.m.")) {
+        		def result = "ok, I will $state.resetTTS5 at $hrTime $mnTime a.m."
+                return result
+                }
+            if (ptts.contains(" p.m.")) {
+        		def result = "ok, I will $state.resetTTS5 at $outputhr $mnTime p.m."
+                return result
+                }
+            	log.debug "result is: $result"
     
-    if (timer == 0) {  // PASSES THE NON TIMER PART OF COMPOUND TTS TO THE COMMAND PROCESS
+    }
+
+	if (timer == 0) {  // PASSES THE NON TIMER PART OF COMPOUND TTS TO THE COMMAND PROCESS
     	outputTxt = "Ok, I will $ttsText"
         state.resetTTS1 = tts
-        resetTts1(tts)
+        beginProcess(params, tts)
+        //resetTts1(tts)
         return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
     	}
        
-    if (timer == 60 && !tts.contains("hour")) {  // SCHEDULES DELAY WHEN IT IS FOR ONE MINUTE
+    if (timer == 60 && (!tts.contains("hour") || !tts.contains("hours"))) {  // SCHEDULES DELAY WHEN IT IS FOR ONE MINUTE ONLY
     	outputTxt = "Ok, I will $ttsText"
         state.resetTTS1 = tts
-        runIn(timer, resetTts1, [overwrite:false])
+        runIn(timer, resetTts1, [overwrite:true])
         log.debug "1st delay time will perform: $state.resetTTS1"
         return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
     	}
     
-    if (timer > 60 && !tts.contains("hour")) {   // SCHEDULES DELAYS WHEN GREATER THAN ON MINUTE
+	if (timer > 60 && (!tts.contains("hour") || !tts.contains("hours"))) {   // SCHEDULES DELAYS WHEN GREATER THAN ONE MINUTE
         outputTxt = "Ok, I will $tts" 
         state.resetTTS2 = tts
-        runIn(timer, resetTts2, [overwrite:false])
+        runIn(timer, resetTts2, [overwrite:true])
         log.debug "2nd delay time will perform: $state.resetTTS2"
         return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
     }
     
-    if (tts.contains("hour")) {   // SCHEDULES DELAYS FOR HOURS
+    if (tts.contains("hour") || tts.contains("hours") && (!tts.contains("minute") || !tts.contains("minutes"))) {   // SCHEDULES DELAYS FOR HOURS
         outputTxt = "Ok, I will $tts" 
         state.resetTTS3 = tts
-        runIn(timer, resetTts3, [overwrite:false])
+        runIn(timer, resetTts3, [overwrite:true])
         log.debug "3rd delay time will perform: $state.resetTTS3"
         return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
     }
+}
+private hhmmss(time, fmt = "HH:mm:ss.SSSZ") {
+	def t = timeToday(time, location.timeZone)
+    def f = new java.text.SimpleDateFormat(fmt)
+    f.setTimeZone(location.timeZone ?: timeZone(time))
+	f.format(t)
 }
 
 // 1st DELAYED COMMAND STARTS HERE AFTER DELAY
@@ -1635,6 +1727,18 @@ def resetTts2(tts) {  // PROCESSES THE DELAYED COMMAND AND INIATES THE PROCESS F
 def resetTts3(tts) {  // PROCESSES THE DELAYED COMMAND AND INIATES THE PROCESS FOR HOURS & MINUTES DELAYS
     if(parent.debug) log.info "Delayed command timer #3 complete, beginning processing"
     tts = state.resetTTS3
+    beginProcess(params, tts)
+}
+// 4th DELAYED COMMAND STARTS HERE AFTER DELAY
+def resetTts4(tts) {  // TURNS THE LIGHTS BACK ON OR OFF AFTER THE DELAYS
+    if(parent.debug) log.info "Delayed command timer #4 complete, beginning processing"
+    tts = state.resetTTS4
+    beginProcess(params, tts)
+}
+// 5th DELAYED COMMAND STARTS HERE AT A CERTAIN TIME
+def resetTts5(tts) {  // PROCESSES THE DELAYED COMMAND AND INIATES THE PROCESS FOR CERTAIN TIME SCHEDULES
+    if(parent.debug) log.info "Delayed command timer #5 complete, beginning processing"
+    tts = state.resetTTS5
     beginProcess(params, tts)
 }
 
@@ -2430,7 +2534,7 @@ def ttsHandler(tts) {
         return outputTxt  
     }
     
-    if (tts.contains("create an alarm")) {
+/*    if (tts.contains("create an alarm")) {
     	log.warn "I am creating an alarm"
         String alarmLbl = "Test Alarm"
         String alarmDate = "2018-12-31"
@@ -2438,7 +2542,7 @@ def ttsHandler(tts) {
         echoDevice.createAlarm(alarmLbl, alarmDate, alarmTime)
         outputTxt = "I am creating an alarm in the $app.label"
         return outputTxt
-        }
+        }*/
     
     if (tts?.contains("do not disturb")) {
         log.info "setting DnD start"
