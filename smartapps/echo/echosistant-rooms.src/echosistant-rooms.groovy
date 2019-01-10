@@ -513,11 +513,11 @@ def cDevices() {
             input "mMode", "enum", title: "Choose Modes to be used by this Room...", options: location.modes.name.sort(), multiple: true, required: false 
             input "gDisable", "capability.switch", title: "Automation Disable Switches (disable = off, enable = on)", multiple: true, required: false, submitOnChange: true
             if (gDisable) { 
-                input "gDisTime", "number", title: "Automatically restore Automations after this number of minutes", defaultValue: 0, required: false
+                input "gDisTime", "number", title: "Automatically restore Automations after this number of minutes", defaultValue: 60, required: false
             }
             input "gNotDisable", "capability.switch", title: "Notification Disable Switches (disable = off, enable = on)", multiple: true, required: false, submitOnChange: true
             if (gNotDisable) {
-                input "gNotDisTime", "number", title: "Automaticaly restore Notifications after this number of minutes", defaultValue: 0, required: false
+                input "gNotDisTime", "number", title: "Automaticaly restore Notifications after this number of minutes", defaultValue: 60, required: false
             }
         }
         section ("Lights, Colored Bulbs, and Switches") {
@@ -907,7 +907,6 @@ if (roomDevice != null) {
         if (tts.contains("are the notifications")) {
         	gNotDisable?.each { d ->
             def status = d.latestValue("switch")
-            log.debug "automations current value is: $status"
             if ((tts.contains(" on")) && status == "on") {
             	outputTxt = "Yes, the notifications are currently on in the $app.label"
                 }
@@ -2101,7 +2100,7 @@ def deviceCmd(params, tts) {
         return outputTxt
     }
 
-    // INDIVIDUAL FANS  AS WELL AS ALEXA FEELINGS COMMANDS
+    // GROUP FANS  
     if (deviceType == "fan") {
         if (tts.contains("fans") && (command == "on" || command == "off")) {
             gFans."$command"()
@@ -2340,66 +2339,9 @@ def deviceCmd(params, tts) {
             if(pPush) { sendPush outputTxt }
         }
         return outputTxt 
-    }
-
-/*    if (deviceType == "tv") {
-        if(sMedia){
-            if (command == "startActivity"){
-                if(state.lastActivity != null){
-                    def activityId = null
-                    def activities = sMedia.currentState("activities").value
-                    def activityList = new groovy.json.JsonSlurper().parseText(activities)
-                    activityList.each { it ->  
-                        def activity = it
-                        if(activity.name == state.lastActivity) {
-                            activityId = activity.id
-                        }    	
-                    }
-                    log.warn "starting activity id = ${activityId}, command = ${command}, lastActivity ${state.lastActivity}"
-                    sMedia."${command}"(activityId)
-                    sMedia.refresh()
-                    outputTxt = "Ok, starting " + state.lastActivity + " activity "
-                    return outputTxt
-                }
-                else { 
-                    outputTxt = "Sorry for the trouble, but in order for EchoSistant to be able to start where you left off, the last activity must be saved"
-                    def pTryAgain = true
-                    return outputTxt
-                }
-            }
-            else {
-                if (command == "activityoff"){
-                    def activityId = null
-                    def currState = sMedia.currentState("currentActivity").value
-                    def activities = sMedia.currentState("activities").value
-                    def activityList = new groovy.json.JsonSlurper().parseText(activities)
-                    if (currState != "--"){
-                        activityList.each { it ->  
-                            def activity = it
-                            if(activity.name == currState) {
-                                activityId = activity.id
-                            }    	
-                        }
-                        state.lastActivity = currState
-                        sMedia."${command}"()
-                        sMedia.refresh()
-                        outputTxt = "Ok, turning off " + currState
-                        return outputTxt
-                    }
-                    else {
-                        outputTxt = sMedia.label + " is already off"
-                        pTryAgain = true
-                        return outputTxt
-                    }
-                }
-            }
-        }
-        return outputTxt
-    }*/
-    
+    }   
 	return outputTxt
 }
-
 
 def automationsRestore() {
 	if (gDisTime != 0) {
@@ -2414,7 +2356,6 @@ def notificationsRestore() {
         if (parent.debug) log.info "Notifications have been restored after $gNotDisTime minutes"
         }
     }
-    
     
 /******************************************************************************************************
 SPEECH AND TEXT ALEXA RESPONSE
