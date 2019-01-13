@@ -1,6 +1,7 @@
 /* 
 * EchoSistant Rooms Profile - EchoSistant Add-on
 *
+*		01/13/2019		Version:5.0 R.0.0.2		Bug fix in creating alarms and added ability to create alarms on mulitple echo devices
 *		01/13/2019		Version:5.0 R.0.0.1b	Bug fix in color bulb (ind & groups) color changes
 * 		01/12/2019		Version:5.0 R.0.0.1a	Licence update
 *		01/11/2019		Version:5.0 R.0.0.1		Modification for integration into Version 5.0
@@ -90,7 +91,7 @@ private release() {
 	def text = "R.0.4.6"
 }
 private revision(text) {
-	text = "Version 5.0, Revision 0.0.1b"
+	text = "Version 5.0, Revision 0.0.2"
     state.version = "${text}"
     return text
     }
@@ -542,7 +543,7 @@ def cDevices() {
             }
         section ("Media"){
             input "sMedia", "capability.mediaController", title: "Media Controller", multiple: false, required: false
-            input "sSpeaker", "capability.musicPlayer", title: "Media Player Devices (Select your Amazon Echo's Here)", required: false, multiple: false
+            input "sSpeaker", "capability.musicPlayer", title: "Media Player Devices (Select your Amazon Echo's Here)", required: false, multiple: true
             input "sSynth", "capability.speechSynthesis", title: "Speech Synthesis Capable Devices", multiple: ttrue, required: false
         }             
         section ("Custom Groups") {
@@ -1651,28 +1652,46 @@ def timerMaker(timer, tts, params) {
         tts = tts.replaceAll("\\b at.*|at \\b", "")
         state.resetTTS5 = tts
         log.debug "tts = $state.resetTTS5"
-      //  schedule("0 $mnTime $hrTime * * ?", resetTts5)
-		
+      	
 		def yyyy = new Date(now()).format("yyyy")
 		def MM = new Date(now()).format("MM")
 		def dd = new Date(now()).format("dd")
         def time = hrTime+":" + mnTime+":" + "00"
         def timeSchedule = hhmmss(time)
         def schedule = "${yyyy}-${MM}-${dd}T${timeSchedule}"
-		runOnce(schedule, resetTts5)
+		log.warn "tts contains: $tts"
+    
+ //   tts.split("and").each { t -> 
+    if (!tts.contains("create an alarm")) {
+    	log.warn "creating an ST schedule"
+        runOnce(schedule, resetTts5)
+        }
+ //   }
 	
-    if (tts.contains("create an alarm ")) {
-    	log.warn "I am creating an alarm"
-        String alarmLbl = "tts"
+    if (tts.contains("create an alarm")) {
+    	String alarmLbl = "tts"
         String alarmDate = "${yyyy}-${MM}-${dd}"
         String alarmTime = "$hrTime:$mnTime"
         log.debug "alarmTime is: $alarmTime"
-        echoDevice.createAlarm(alarmLbl, alarmDate, alarmTime)
+        	if(sSpeaker == null) {
+            	def result = "I am sorry, but it seems that you have not selected an echo device to create an alarm on"
+                return result
+                }
+                else {
+        sSpeaker?.createAlarm(alarmLbl, alarmDate, alarmTime)
         def result = "Ok, I am creating an alarm in the $app.label for $alarmTime on $alarmDate"
+      //  return result
+     //   }
+        if (tts.contains("create an alarm and ")) {
+        log.warn "creating a schedule also"
+        	runOnce(schedule, resetTts5)
+            }
+        return result
+        }
         log.warn "$result"
         return result
         }           
-
+    
 	log.debug "5th delay time will perform: $state.resetTTS5"
 			if (ptts.contains(" a.m.")) {
         		def result = "ok, I will $state.resetTTS5 at $hrTime $mnTime a.m."
