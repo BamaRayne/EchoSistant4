@@ -1,6 +1,7 @@
 /* 
 * EchoSistant Rooms Profile - EchoSistant Add-on
 *
+*		01/13/2019		Version:5.0 R.0.0.1b	Bug fix in color bulb (ind & groups) color changes
 * 		01/12/2019		Version:5.0 R.0.0.1a	Licence update
 *		01/11/2019		Version:5.0 R.0.0.1		Modification for integration into Version 5.0
 *		01/09/2019		Version:4.6 R.0.3.7		Bug fix in scheduling
@@ -89,7 +90,7 @@ private release() {
 	def text = "R.0.4.6"
 }
 private revision(text) {
-	text = "Version 5.0, Revision 0.0.1a"
+	text = "Version 5.0, Revision 0.0.1b"
     state.version = "${text}"
     return text
     }
@@ -1956,6 +1957,7 @@ def deviceCmd(params, tts) {
 	// COLORED LIGHTS - INDIVIDUAL
     if (deviceType == "color") {
         if (gSwitches?.size()>0) {
+
             gSwitches?.each { c ->
                 def cMatch = c.label.toLowerCase()
                 if(tts.contains("${cMatch}") && tts.contains("color")) {  // INDIVIDUAL LIGHTS ON/OFF
@@ -1972,6 +1974,7 @@ def deviceCmd(params, tts) {
                     else {
                         outputTxt =  "Sorry, but I wasn't able to change the color to " +  tts
                         def pTryAgain = true
+                    	}
                     }
                     return outputTxt
                 }
@@ -1984,12 +1987,12 @@ def deviceCmd(params, tts) {
                     hueSetVals =  getColorName( tts , level)
                     if (hueSetVals) {
 						// FILTER DEVICE FROM DIFFERENT DEVICE TYPES FOR A CAPABILITY
-                        def mySwitchCaps = gSwitches.capabilities
+                        def mySwitchCaps = gSwitches.capabilities 
                         mySwitchCaps.commands.each {cap ->
                             if ("$cap.name".contains("setColor")) {
                                 outputTxt =  "Ok, changing your bulbs to " + tts
-                                c?.setColor(hueSetVals)
-                            }
+                                gSwitches?.setColor(hueSetVals)
+                                log.warn "the color bulb is: $c"
                         }
                     }
                 }
