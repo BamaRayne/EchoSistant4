@@ -1,6 +1,8 @@
 /* 
 * EchoSistant Rooms Profile - EchoSistant Add-on
 *
+* 		01/12/2019		Version:5.0 R.0.0.1a	Licence update
+*		01/11/2019		Version:5.0 R.0.0.1		Modification for integration into Version 5.0
 *		01/09/2019		Version:4.6 R.0.3.7		Bug fix in scheduling
 *		01/09/2019		Version:4.6 R.0.3.6		Added Verbal specific time scheduling to actions & ability to turn on/off device for xx minutes then restore
 *		01/06/2019		Version:4.6 R.0.3.5		Improvements in the delay controls
@@ -48,12 +50,15 @@
 *		6/12/2017		Version:4.5 R.0.0.1		Alpha Release
 *		2/17/2017		Version:4.0 R.0.0.1		Public Release
 * 
-*  Copyright 2016 Jason Headley & Bobby Dobrescu
+*  Based upon the previous collective works of the EchoSistant Team of Versions 1-4.
+*  Copyright 2019 Jason Headley
 *
-*  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
-*  in compliance with the License. You may obtain a copy of the License at:
-*
-*      http://www.apache.org/licenses/LICENSE-2.0
+*  This software if free for Private Use. You may use this software in its entirety and may not modify, adjust, rewrite,
+*  borrow from, or utilize the software in any other means not specifically specified by the original author.
+*  
+*  This software and derivatives may not be used for commercial purposes.
+*  You may not distribute or sublicense this software.
+*  You may not grant a sublicense to modify and distribute this software to third parties not included in the license.
 *
 *  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
 *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
@@ -84,7 +89,7 @@ private release() {
 	def text = "R.0.4.6"
 }
 private revision(text) {
-	text = "Version 4.6, Revision 0.3.7"
+	text = "Version 5.0, Revision 0.0.1a"
     state.version = "${text}"
     return text
     }
@@ -718,6 +723,7 @@ def updated() {
     if(!atomicState?.isInstalled) { atomicState?.isInstalled = true }
 }
 def initialize() {
+	def roomName = "$app.label"
 	parent.state.childRevision = revision(text)
 	parent.webCoRE_init()
     state.tts
@@ -1436,15 +1442,19 @@ if (roomDevice != null) {
 //		}
     	return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
 	}
+def getShmIncidents() {
+    //Thanks Adrian
+    def incidentThreshold = now() - 99999999604800000
+    return location.activeIncidents.collect{[date: it?.date?.time, title: it?.getTitle(), message: it?.getMessage(), args: it?.getMessageArgs(), sourceType: it?.getSourceType()]}.findAll{ it?.date >= incidentThreshold } ?: "no incidents reported at this time"
+}
 
 /******************************************************************************************************
 	INCOMING TTS PROCESSING FOR DELAYS, COMMANDS, AND MESSAGES
 ******************************************************************************************************/
 def profileEvaluate(params) {
-    log.info "The profileEvaluate ($params.pintentName) has been activated and received this: $params.ptts"
-    def tts = params.ptts.toLowerCase()
-
+    
     //Output Variables
+    def tts = params.ptts
     def pTryAgain = true
     def pPIN = false
     def pShort = false
@@ -1456,6 +1466,9 @@ def profileEvaluate(params) {
     def String command = (String) null
     def String deviceType = (String) null
     def String colorMatch = (String) null
+	
+//    outputTxt =  "Incidents test: " + getShmIncidents()
+//    return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
 
     // SKIPS PARSING AND SEND ENTIRE INCOMING TTS AS AN OUTGOING MESSAGE 
     if (tts.startsWith("hey ")) {  
