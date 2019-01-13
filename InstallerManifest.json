@@ -26,7 +26,7 @@
             "iconUrl": "https://raw.githubusercontent.com/BamaRayne/Echosistant/master/smartapps/bamarayne/echosistant.src/app-Echosistant.png",
             "published": true,
             "oAuth": true,
-            "version": "Version 4.6, Revision 0.0.4",
+            "version": "Version 5.0, Revision 0.0.1c",
             "appSettings": {},
             "appUrl": "smartapps/echo/echosistant.src/echosistant.groovy"
         },
@@ -35,7 +35,7 @@
                 "iconUrl": "https://raw.githubusercontent.com/BamaRayne/Echosistant/master/smartapps/bamarayne/echosistant.src/app-Echosistant.png",
                 "published": true,
                 "oAuth": false,
-                "version": "Version 4.6, Revision 0.3.7",
+                "version": "Version 5.0, Revision 0.0.1a",
                 "appSettings": {},
                 "appUrl": "smartapps/echo/echosistant-rooms.src/echosistant-rooms.groovy",
                 "optional": false
