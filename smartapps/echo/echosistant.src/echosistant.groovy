@@ -87,6 +87,7 @@ preferences {
     page name: "awsSkillAuthGenPage"
     page name: "manageProfilesPage"
     page name: "processActionsPage"
+    page name: "codeUpdatesPage"
    
 
 }
@@ -132,6 +133,9 @@ page name: "appUninstallPage"
 page name: "mIntent"
 def mIntent() {
     dynamicPage (name: "mIntent", title: "Settings and Support", install: false, uninstall: false) {
+        section() {
+        	href "codeUpdatesPage", title: "Configure updates notifications"
+            }
         section() {
         	href "spellings", title: "Do you have family members with names spelled a little differently?", description: spellingsD(), state: spellingsS(),
             image: "https://raw.githubusercontent.com/BamaRayne/EchoSistant4/master/Icons/Strange.png"
@@ -1614,14 +1618,14 @@ def codeUpdatesPage() {
         section() {
             def lamData = atomicState?.lambdaData
             def lDes = "\bStack Info:"
-            lDes += "\n • Stack Version: (${lamData?.stackVersion != null ? lamData?.stackVersion : "N/A"})"
-            lDes += "\n • Lambda Version: (${lamData?.version != null ? "V${lamData?.version}" : "N/A"})"
-            lDes += "\n • Lambda Date: (${lamData?.versionDt != null ? "${lamData?.versionDt}" : "N/A"})"
+        //    lDes += "\n • Stack Version: (${lamData?.stackVersion != null ? lamData?.stackVersion : "N/A"})"
+        //    lDes += "\n • Lambda Version: (${lamData?.version != null ? "V${lamData?.version}" : "N/A"})"
+        //    lDes += "\n • Lambda Date: (${lamData?.versionDt != null ? "${lamData?.versionDt}" : "N/A"})"
             lDes += "\n\n\bSmartApps:"
-            lDes += "\n • Parent Version: (${releaseVer() ?: "N/A"})"
+            lDes += "\n • Parent Version: (${release() ?: "N/A"})"
             lDes += "\n • Profile Module: (${atomicState?.swVer?.profVer != null ? atomicState?.swVer?.profVer : "N/A"})"
             lDes += "\n • Shortcuts Module: (${atomicState?.swVer?.shrtCutVer != null ? atomicState?.swVer?.shrtCutVer : "N/A"})"
-            lDes += "\n • Storage Module: (${atomicState?.swVer?.storVer != null ? atomicState?.swVer?.storVer : "N/A"})"
+        //    lDes += "\n • Storage Module: (${atomicState?.swVer?.storVer != null ? atomicState?.swVer?.storVer : "N/A"})"
             paragraph lDes, state: "complete"
         }
         section() {
@@ -1645,6 +1649,30 @@ def changeLogPage () {
 		atomicState?.installData = iData
 	}
 }
+
+def chgLogInfo() { return getWebData([uri: changeLogUrl(), contentType: "text/plain; charset=UTF-8"], "changelog") }
+
+def getWebData(params, desc, text=true) {
+	try {
+		LogAction("getWebData: ${desc} data", "info", true)
+		httpGet(params) { resp ->
+			if(resp.data) {
+				if(text) {
+					return resp?.data?.text.toString()
+				} else { return resp?.data }
+			}
+		}
+	}
+	catch (ex) {
+		if(ex instanceof groovyx.net.http.HttpResponseException) {
+			LogAction("${desc} file not found", "warn", true)
+		} else {
+			log.error "getWebData(params: $params, desc: $desc, text: $text) Exception:", ex
+		}
+		return "${label} info not found"
+	}
+}
+
 
 def storageInfoSect() {
     def storApp = getStorageApp()
@@ -1792,6 +1820,9 @@ def getSkillInvoc(name) {
     return name?.replace("EchoSistant - ", "")
 }
 
+
+
+
 /************************************************************************************************************
            UI - Version/Copyright/Information/Help
 ************************************************************************************************************/
@@ -1803,8 +1834,8 @@ def gitRepo() { return "BamaRayne/Echosistant"}
 def gitPath() { return "${gitRepo()}/${gitBranch()}"}
 def gitBranch() { return "master" }
 def relType() { return "Alpha (RC3)" }
-def getAppImg(file)	    { return "https://echosistant.com/es5_content/images/$file" }
-def getAppVideo(file)	{ return "https://echosistant.com/es5_content/videos/$file" }
+def getAppImg(file)	    { return "https://raw.githubusercontent.com/tonesto7/SmartThings-tonesto7-public/master/resources/es5_content/images/$file" }
+def getAppVideo(file)	{ return "https://raw.githubusercontent.com/tonesto7/SmartThings-tonesto7-public/master/resources/es5_content/videos/$file" }
 def getFirebaseAppUrl() 	{ return "https://echosistant-analytics.firebaseio.com" }
 def getStackTemplateUrl() 	{ return "https://s3.amazonaws.com/echosistant/EchoSistantHelper.template" }
 def getStackName() 			{ return "EchoSistantHelper" }
@@ -1813,7 +1844,7 @@ def awsSkillAuthUrl() { return "https://www.amazon.com/ap/oa?response_type=code&
 def getAppEndpointUrl(subPath)	{ return "${apiServerUrl("/api/smartapps/installations/${app.id}${subPath ? "/${subPath}" : ""}?access_token=${atomicState.accessToken}")}" }
 def getWikiPageUrl()	{ return "http://thingsthataresmart.wiki/index.php?title=EchoSistant" }
 def appDataUrl()        { return "https://raw.githubusercontent.com/tonesto7/app-icons/master/appData.json"}
-def changeLogUrl()      { return "https://echosistant.com/es5_content/changelog.txt" }
+def changeLogUrl()      { return "https://raw.githubusercontent.com/tonesto7/SmartThings-tonesto7-public/master/resources/es5_content/changelog.txt" }
 def getIssuePageUrl()	{ return "https://github.com/BamaRayne/echosistant/issues" }
 def appInfoDesc()	{
     def str = ""
