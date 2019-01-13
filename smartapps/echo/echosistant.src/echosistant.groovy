@@ -133,9 +133,9 @@ page name: "appUninstallPage"
 page name: "mIntent"
 def mIntent() {
     dynamicPage (name: "mIntent", title: "Settings and Support", install: false, uninstall: false) {
-        section() {
-        	href "codeUpdatesPage", title: "Configure updates notifications"
-            }
+  //      section() {
+  //      	href "codeUpdatesPage", title: "Configure updates notifications"
+  //          }
         section() {
         	href "spellings", title: "Do you have family members with names spelled a little differently?", description: spellingsD(), state: spellingsS(),
             image: "https://raw.githubusercontent.com/BamaRayne/EchoSistant4/master/Icons/Strange.png"
