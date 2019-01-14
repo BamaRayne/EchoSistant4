@@ -8,6 +8,7 @@
  
 ************************************ FOR INTERNAL USE ONLY ******************************************************
 *
+*		01/13/2019	Version: 5.0 R.0.0.2	Added ability to have multi room commands (turn on lights in living room and turn on lights in kitchen)
 *     	01/12/2019	Version: 5.0 R.0.0.1c	License update/change
 * 		01/12/2019	Version: 5.0 R.0.0.1b	Bug fix for Android/IOS selection
 *		01/11/2019	Version: 5.0 R.0.0.1a	Change to room names. Multi word room names no longer need to be one word (LivingRoom can now be Living Room)
@@ -67,7 +68,7 @@ private def textVersion() {
 	def text = "1.0"
 }
 private release() {
-    def text = "Version 5.0, Revision 0.0.1c"
+    def text = "Version 5.0, Revision 0.0.2"
 }
 /**********************************************************************************************************************************************/
 preferences {   
@@ -101,22 +102,24 @@ def mainParentPage() {
             image: "https://raw.githubusercontent.com/BamaRayne/Echosistant/master/smartapps/bamarayne/echosistant.src/Echosistant_Routines.png"
         }
         section ("") {
-        	href "awsSkillConfigPage", title: "Create and Manage AWS Rooms Skills", image: "https://raw.githubusercontent.com/BamaRayne/EchoSistant4/master/Icons/Skills.png"
+        	href "awsSkillConfigPage", title: "Create and Manage AWS Rooms Skills", description: mSkillD(), state: mSkillS(),
+            image: "https://raw.githubusercontent.com/BamaRayne/EchoSistant4/master/Icons/Skills.png"
             }
         section ("") {
             href "mIntent", title: "Configure System Settings", description: mIntentD(), state: mIntentS(), 
             image: "https://raw.githubusercontent.com/BamaRayne/Echosistant/master/smartapps/bamarayne/echosistant.src/Echosistant_Config.png"
         }
-        section ("DashBoard") {    
-            paragraph "The Current Mode is: ${location.currentMode}"
+        section ("DashBoard") {
+        	paragraph "The Current Mode is: ${location.currentMode}"
             paragraph "Smart Home Monitor is set to: " + getSHMStatus()
         }
         section("Donations:") {
-             href url: textDonateLink(), style:"external", required: false, title:"Donations", description:"Tap to open browser",
+             href url: textDonateLink(), style:"external", required: false, title:"Donations", description: mDonationsD(), state: mDonationsS(),
              image: "https://raw.githubusercontent.com/BamaRayne/SmartSuite/master/Icons/Donate.png"
         }
         section("Uninstall") {
-        	href "appUninstallPage", title: "Click here to remove $app.label", image:"https://raw.githubusercontent.com/jasonrwise77/My-SmartThings/master/LogicRulz%20Icons/uninstall.png"
+        	href "appUninstallPage", title: "Click here to remove $app.label", description: mDeleteD(), state: mDeleteS(),
+            image:"https://raw.githubusercontent.com/jasonrwise77/My-SmartThings/master/LogicRulz%20Icons/uninstall.png"
         }
 	}
 }
@@ -482,7 +485,7 @@ def processBegin(){
     def String outputTxt = (String) null 
     	state.pTryAgain = false
     if (debug) log.debug "^^^^____LAUNCH REQUEST___^^^^" 
-    if (debug) log.debug "Launch Data: (event) = '${event}', (deviceId) = '${state.deviceId}', (Lambda version) = '${versionTxt}', (Lambda release) = '${releaseTxt}', (ST Main App release) = '${releaseSTtxt}'"
+    if (debug) log.debug "Launch Data: (event) = '${event}', (Lambda version) = '${versionTxt}', (Lambda release) = '${releaseTxt}', (ST Main App release) = '${releaseSTtxt}'"
 
     if (event == "noAction") {
     	state.pinTry = null
@@ -491,7 +494,7 @@ def processBegin(){
         state.pTryAgain = false
 }
 
-log.debug "deviceID = $state.deviceId"
+//log.debug "deviceID = $state.deviceId"
 
 // >>> NO Intent <<<<    
     if (event == "AMAZON.NoIntent"){
@@ -629,15 +632,57 @@ def processTts(tts) {
     if (ptts.contains("$name6")) {
     	ptts = ptts.replace("$name6", "$name5") }
         ptts = ptts.toLowerCase()
-        log.debug "ptts = = $ptts"
+        log.debug "ptts == $ptts"
 
-	if (ptts.contains(" in the")) {
-		ptts = ptts.replaceAll("\\bin the.*\\b","")
-		}
+
+    // PARSING FOR MULTI ROOM COMMANDS 
+    if (ptts.contains(" in the")) {
+     	def newTts = ptts.split("and").each { t -> 
+            def ttsText = t.toLowerCase()
+            log.warn "ttsText is: $ttsText"
+        
+	if (ttsText.contains(" in the")) { // FIND SECOND INTENTNAME
+		def newIntent = ttsText.replaceAll("\\b in the .*\\b", "")
+        newIntent = ttsText.replaceAll("\\b${newIntent}|bin the \\b", "")
+	//	log.warn "newIntent is now: $newIntent"
+			
+            childApps.each {child ->
+            	def childName = child.label.toString().toLowerCase() //.replaceAll("\\s","")  DO NOT REMOVE WHITE SPACE FROM SECOND INTENTNAME
+                if ("${newIntent}".contains("${childName}")) {
+                	log.warn "Found a second profile: $childName"
+                        dataSet = [ptts:ttsText, pintentName:childName] 
+					
+                    if (ptts.startsWith("did") || ptts.startsWith("tell") || ptts.startsWith("get") || ptts.endsWith("tonight") || ptts.contains("weather") || ptts.contains("temperature") || ptts.contains("forecast") || ptts.contains("humidity") || ptts.contains("rain") || ptts.contains("wind")) {
+                    	def pResponse = child.profileFeedbackEvaluate(dataSet)
+                        outputTxt = pResponse.outputTxt
+                    	pContCmds = pResponse.pContCmds
+                    	pContCmdsR = pResponse.pContCmdsR
+                    	pTryAgain = pResponse.pTryAgain
+                    	}
+					if (ptts.startsWith("for") || ptts.startsWith("is") || ptts.startsWith("has") || ptts.startsWith("give") || ptts.startsWith("how") || ptts.startsWith("what") || ptts.startsWith("when") || ptts.startsWith("which") || ptts.startsWith("are") || ptts.startsWith("check") || ptts.startsWith("who")) {
+                        def pResponse = child.profileFeedbackEvaluate(dataSet)
+                        outputTxt = pResponse.outputTxt
+                    	pContCmds = pResponse.pContCmds
+                    	pContCmdsR = pResponse.pContCmdsR
+                    	pTryAgain = pResponse.pTryAgain
+                    	}
+                    else {  
+                        def pResponse = child.profileEvaluate(dataSet)
+                		outputTxt = pResponse.outputTxt + "  in the $pintentName"
+                    	pContCmds = pResponse.pContCmds
+                    	pContCmdsR = pResponse.pContCmdsR
+                    	pTryAgain = pResponse.pTryAgain
+                    	log.info "I have received this from the Lambda: ${outputTxt}"
+                    	}
+        		}
+            }        
+        }
+    }
+}
+
 			childApps.each {child ->
-    			def childName = child.label.toString().replaceAll("\\s","")
-    		//	log.warn "The childName is now: $childName"
-             	if ("${childName}" == pintentName) { 
+    			def childName = child.label.toString().replaceAll("\\s","")  //removes white space from the room names to match incoming intent name
+    		 	if ("${childName}" == pintentName) { 
                     if (debug) log.debug "Found a profile: '${pintentName}'"
                     pintentName = child.label
                     // recording last message
@@ -664,7 +709,7 @@ def processTts(tts) {
                     	}
                     else {  
                         def pResponse = child.profileEvaluate(dataSet)
-                		outputTxt = pResponse.outputTxt
+                		outputTxt = pResponse.outputTxt + "  in the $pintentName"
                     	pContCmds = pResponse.pContCmds
                     	pContCmdsR = pResponse.pContCmdsR
                     	pTryAgain = pResponse.pTryAgain
@@ -693,6 +738,7 @@ def processTts(tts) {
             pintentName = state.event
 			return ["outputTxt":outputTxt, "pContCmds":pContCmds, "pShort":state.pShort, "pContCmdsR":pContCmdsR, "pTryAgain":pTryAgain, "pPIN":pPIN]              
     	}
+    
 /*    def newTts = ptts.split("and").each { t -> 
     	ptts = t.toLowerCase() 
          
@@ -879,6 +925,25 @@ def mSupportD() {
     text
 }
 
+def mSkillS(){
+	def result = ""
+    def IntentS = ""
+    if (LARN) {
+    	IntentS = "comp"
+        result = "complete"
+    }    	
+    	result
+}
+def mSkillD() {
+    def text = "Tap here to Configure"
+	if (LARN) 
+    {
+        text = "Configured"
+    }
+    else text = "Tap here to Configure"
+	    text
+} 
+
 def mIntentS(){
 	def result = ""
     def IntentS = ""
@@ -907,6 +972,7 @@ def spellingsD() {def text = "Tap here to configure"
     	text = "Configured"}
     	else text = "Tap to Configure"
 		text}
+
 def mSecurityS() {def result = ""
     if (cMiscDev || cRoutines || uPIN_SHM || uPIN_Mode || fSecFeed || shmSynthDevice || shmSonosDevice || volume || resumePlaying) {
     	result = "complete"}
@@ -916,6 +982,7 @@ def mSecurityD() {def text = "Tap here to configure settings"
     	text = "Configured"}
     	else text = "Tap to Configure"
 		text}
+
 def mDefaultsS() {def result = ""
     if (cLevel || cVolLevel || cTemperature || cHigh || cMedium || cLow || cFanLevel || cLowBattery || cInactiveDev || cFilterReplacement || cFilterSynthDevice || cFilterSonosDevice) {
     	result = "complete"}
@@ -926,6 +993,25 @@ def mDefaultsD() {def text = "Tap here to configure settings"
     	else text = "Tap to Configure"
 		text}         
 
+def mDonationsS() {def result = ""
+	if (LARN) {
+    result = "complete"}
+   		result}
+def mDonationsD() {def text = "Your Acknowldegement is greatly Appriciated" 
+	if (LARN) {
+    text = "Your Acknowldegement is greatly Appriciated"}
+    	else text = "Your Acknowldegement is greatly Appriciated"
+		text}         
+
+def mDeleteS() {def result = ""
+	if (LARN) {
+    result = "complete"}
+   		result}
+def mDeleteD() {def text = "You know you really do NOT want to do this" 
+	if (LARN) {
+    text = "You know you really do NOT want to do this"}
+    	else text = "You know you really do NOT want to do this"
+		text}         
 
 
 
