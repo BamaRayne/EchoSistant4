@@ -254,7 +254,7 @@ def mSettings(){
     dynamicPage(name: "mSettings", uninstall: false) {
         section("") {
             input "debug", "bool", title: "Enable Debug Logging", default: true, submitOnChange: true 
-        	input "trace", "bool", title: "Enable Trace Logging", default: false, submitOnChange: true
+        	input "trace", "bool", title: "Enable Trace Logging", default: true, submitOnChange: true
         }
         section (""){
             input "ShowLicense", "bool", title: "Show Apache License", default: false, submitOnChange: true
@@ -637,7 +637,7 @@ def processTts(tts) {
 
     // PARSING FOR MULTI ROOM COMMANDS 
     if (ptts.contains(" in the")) {
-     	def newTts = ptts.split("and").each { t -> 
+     	def newTts = ptts.split(" and").each { t -> 
             def ttsText = t.toLowerCase()
             log.warn "ttsText is: $ttsText"
         
@@ -709,7 +709,7 @@ def processTts(tts) {
                     	}
                     else {  
                         def pResponse = child.profileEvaluate(dataSet)
-                		outputTxt = pResponse.outputTxt + "  in the $pintentName"
+                		outputTxt = pResponse.outputTxt
                     	pContCmds = pResponse.pContCmds
                     	pContCmdsR = pResponse.pContCmdsR
                     	pTryAgain = pResponse.pTryAgain
@@ -739,33 +739,6 @@ def processTts(tts) {
 			return ["outputTxt":outputTxt, "pContCmds":pContCmds, "pShort":state.pShort, "pContCmdsR":pContCmdsR, "pTryAgain":pTryAgain, "pPIN":pPIN]              
     	}
     
-/*    def newTts = ptts.split("and").each { t -> 
-    	ptts = t.toLowerCase() 
-         
-            if (!ptts.contains(" in the")) {
-             	def test = "$params.intentName"
-                test = test as String
-                def pintentName = "$test"
-                ptts = ptts.replaceAll("\\band.*\\b", "")
-                log.trace "the ptts is: $ptts"
-                log.trace "the pintentName is: $pintentName"
-				def data = [ptts:ptts, pintentName:pintentName] 
-           //     outputTxt = findChild(data)
-             	}
-             
-             if (ptts.contains(" in the")) {
-             	def test = ptts.replaceAll("\\b.*in the \\b","")
-                test = test as String
-                def pintentName = "$test"
-                ptts = ptts.replaceAll("\\bin the.*\\b", "")
-                log.trace "new ptts is: $ptts"
-                log.trace "new pintentName is: $pintentName"
-				def data = [ptts:ptts, pintentName:pintentName] 
-             //   findChild(data)
-                }*/
-                
-    
-
 /***********************************************************************************************************
 		SMART HOME MONITOR STATUS AND KEYPAD HANDLER
 ***********************************************************************************************************/

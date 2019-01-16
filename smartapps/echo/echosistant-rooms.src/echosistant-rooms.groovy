@@ -1,6 +1,8 @@
 /* 
 * EchoSistant Rooms Profile - EchoSistant Add-on
 *
+*		01/16/2019		Version:5.0 R.0.0.4		Expanded command, delay, restore functions
+*		01/14/2019		Version:5.0 R.0.0.3		Added ability to start and stop music in rooms on Echo Speaks Devices
 *		01/13/2019		Version:5.0 R.0.0.2		Bug fix in creating alarms and added ability to create alarms on mulitple echo devices
 *		01/13/2019		Version:5.0 R.0.0.1b	Bug fix in color bulb (ind & groups) color changes
 * 		01/12/2019		Version:5.0 R.0.0.1a	Licence update
@@ -91,7 +93,7 @@ private release() {
 	def text = "R.0.4.6"
 }
 private revision(text) {
-	text = "Version 5.0, Revision 0.0.2"
+	text = "Version 5.0, Revision 0.0.4"
     state.version = "${text}"
     return text
     }
@@ -1500,15 +1502,28 @@ def profileEvaluate(params) {
                 timer = state.timerMins
                 tts = tts1
                 beginProcess(params, tts)
-                    if (tts.contains("turn on")) {
-                    log.info "tts contains 'ON'"
+                	if (tts.contains("increase")) {
+                    	tts = tts.replaceAll("increase ", "decrease ")
+                		timerMaker(timer, tts, params)
+                        }
+                    else if (tts.contains("decrease")) {
+                    	tts = tts.replaceAll("decrease ", "increase ")
+                        timerMaker(timer, tts, params)
+                        }
+                	if (tts.contains("turn on")) {
                     	tts = tts.replaceAll("turn on ", "turn off ")
                 		timerMaker(timer, tts, params)
                         }
                     else if (tts.contains("turn off")) {
-                    log.info "tts contains 'OFF'"
                     	tts = tts.replaceAll("turn off ", "turn on ")
-                        log.info "test method tts is now $tts"
+                        timerMaker(timer, tts, params)
+                        }
+                	if (tts.contains("start")) {
+                    	tts = tts.replaceAll("start ", "stop ")
+                		timerMaker(timer, tts, params)
+                        }
+                    else if (tts.contains("stop")) {
+                    	tts = tts.replaceAll("stop ", "start ")
                         timerMaker(timer, tts, params)
                         }
                 outputTxt = "Ok, I will $params.ptts"
@@ -1559,7 +1574,7 @@ def profileEvaluate(params) {
 
         // SCHEDULES A DELAY OF MINUTES ONLY
         if ((tts.contains("minute") || tts.contains("minutes")) && (!tts.contains("hours") || !tts.contains("hour"))) {
-            def newTts = tts.split("and").each { t -> 
+            def newTts = tts.split(" and").each { t -> 
                 tts = t.toLowerCase()
                 def tts1 = tts.replaceAll("\\b in .*\\b", "")
                 log.warn "The tts is now: $tts"
@@ -1579,7 +1594,7 @@ def profileEvaluate(params) {
         }    
     }
     else {  // PARSER BEGINS - SPLITS INCOMING TTS INTO A LIST OF COMMANDS
-        def newTts = tts.split("and").each { t -> 
+        def newTts = tts.split(" and").each { t -> 
             def ttsText = t.toLowerCase()
             log.info "ttsText is: $ttsText"
             tts = ttsText
@@ -1801,7 +1816,25 @@ def beginProcess(params, tts) {
     def String deviceType = (String) null
     def String colorMatch = (String) null
 
-
+	// BLUETOOTH CONNECTION
+    if (tts == ("connect to my phone")) {
+    //	sSpeaker.connectBluetooth()
+    	def btDevices = sSpeaker.connectBluetooth("Jason's Note 8")
+        outputTxt = "Ok, connecting to your phone in the $app.label"
+        return outputTxt
+        }
+    // BLUETOOTH DISCONNECT
+    if (tts == ("disconnect my phone")) {
+    	sSpeaker.disconnectBluetooth()
+        outputTxt = "Ok, disconnecting your phone from the $app.label"
+        return outputTxt
+        }
+	// STOP MUSIC PLAYING ON ECHO SPEAKS DEVICES
+    if (tts == ("stop the music")) {
+    	sSpeaker.pause()
+            outputTxt = "Ok, I am stopping the music in the $app.label"
+             return outputTxt  
+             }
 	// CANCEL ALL SCHEDULED TIMERS/DELAYS
     if (tts.contains("cancel the delay") || tts.contains("cancel the timer")) {
         unschedule(resetTts)
@@ -2543,7 +2576,7 @@ def ttsHandler(tts) {
         }
     }
     
-    if (tts.contains("repeat last message") || tts == "repeat the last message") {
+    if (tts.contains("repeat last message") || tts == "repeat the last message" || tts == "repeat last command") {
         outputTxt = "The last message sent to ${app.label} was, " + state.lastMessage
         return outputTxt
     }
