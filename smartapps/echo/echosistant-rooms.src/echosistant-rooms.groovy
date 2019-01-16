@@ -1,7 +1,7 @@
 /* 
 * EchoSistant Rooms Profile - EchoSistant Add-on
 *
-*		01/16/2019		Version:5.0 R.0.0.4		Expanded command, delay, restore functions
+*		01/16/2019		Version:5.0 R.0.0.4		Expanded command, delay, restore functions. Expanded music feature to play String on Pandora in the room
 *		01/14/2019		Version:5.0 R.0.0.3		Added ability to start and stop music in rooms on Echo Speaks Devices
 *		01/13/2019		Version:5.0 R.0.0.2		Bug fix in creating alarms and added ability to create alarms on mulitple echo devices
 *		01/13/2019		Version:5.0 R.0.0.1b	Bug fix in color bulb (ind & groups) color changes
@@ -1833,6 +1833,15 @@ def beginProcess(params, tts) {
     if (tts == ("stop the music")) {
     	sSpeaker.pause()
             outputTxt = "Ok, I am stopping the music in the $app.label"
+             return outputTxt  
+             }
+	// PLAY MUSIC PLAYING ON ECHO SPEAKS DEVICES
+    if (tts == ("play music") || tts.contains("on pandora") || tts.contains("on amazon music")) {
+    	def music = tts.replaceAll("\\b in .*\\b", "")
+        music = music.replaceAll("play", "").toUpperCase() as String 
+        log.warn "Playing music: $music"
+        sSpeaker.searchPandora(music)
+            outputTxt = "Ok, I am playing $music in the $app.label"
              return outputTxt  
              }
 	// CANCEL ALL SCHEDULED TIMERS/DELAYS
