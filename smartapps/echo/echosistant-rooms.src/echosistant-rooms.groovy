@@ -1039,7 +1039,7 @@ if (roomDevice != null) {
     }
 
 	// DIMMERS/LIGHTS INDIVIDUAL LEVELS //
-        if  (((tts.contains("how bright is") || tts.contains("what level is the") || tts.contains("what is the"))) && (tts.contains("fan") || tts.contains("light") || tts.contains("lamp"))) {
+        if  (((tts.contains("how bright is") || tts.contains("what level is the") || tts.contains("what is the"))) && (tts.contains("light") || tts.contains("lamp"))) {
             log.debug "Looking for a dimmer level"
             gSwitches?.each { d -> 
                 def dMatch = d.label.toLowerCase()
@@ -1178,7 +1178,7 @@ if (roomDevice != null) {
 
         // CEILING FANS & FANS - SPEEDS AND LEVELS, ON & OFF //
         if (tts.contains("fan")) {
-        if (tts.contains("what speed") || tts.contains("fan")) {
+        if ((tts.contains("what speed") || tts.contains("what is the")) && (tts.contains("fan") || tts.contains("fans"))) {
             if (parent.debug) log.debug "Ceiling fan speed requested"
             gFans?.each { f -> 
                 def fMatch = f.label.toLowerCase()
