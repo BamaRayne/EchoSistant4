@@ -1,6 +1,8 @@
 /* 
 * EchoSistant Rooms Profile - EchoSistant Add-on
 *
+*		02/22/2019		Version:5.0 R.0.0.6		Bug fix for humidity and temperature when asking "What's the temperature/humidity"
+*		01/27/2019		Version:5.0 R.0.0.5		Bug fix in color bulbs commands
 *		01/16/2019		Version:5.0 R.0.0.4		Expanded command, delay, restore functions. Expanded music feature to play String on Pandora in the room
 *		01/14/2019		Version:5.0 R.0.0.3		Added ability to start and stop music in rooms on Echo Speaks Devices
 *		01/13/2019		Version:5.0 R.0.0.2		Bug fix in creating alarms and added ability to create alarms on mulitple echo devices
@@ -93,7 +95,7 @@ private release() {
 	def text = "R.0.4.6"
 }
 private revision(text) {
-	text = "Version 5.0, Revision 0.0.4"
+	text = "Version 5.0, Revision 0.0.6"
     state.version = "${text}"
     return text
     }
@@ -1202,7 +1204,7 @@ if (roomDevice != null) {
 		}
         
         // TEMPERATURE //
-        if (tts == "what is the temperature" || tts == "whats the temperature" || tts == "whats the temp"){
+        if (tts == "what is the temperature" || tts == "what's the temperature" || tts == "what's the temp"){
             if (parent.debug) log.debug "What is the temp requested"
             if(fTemp){
                 def sensors = fTemp?.size()
@@ -1220,7 +1222,7 @@ if (roomDevice != null) {
         }
 
         // HUMIDITY //
-        if (tts == "what is the humidity" || tts == "whats the humidity" || tts == "how humid is it"){
+        if (tts == "what is the humidity" || tts == "what's the humidity" || tts == "how humid is it"){
             if (parent.debug) log.debug "Humidity requested"
             if(fHum){
                 def sensors = fHum?.size()
@@ -2048,12 +2050,15 @@ def deviceCmd(params, tts) {
                     hueSetVals =  getColorName( tts , level)
                     if (hueSetVals) {
 						// FILTER DEVICE FROM DIFFERENT DEVICE TYPES FOR A CAPABILITY
-                        def mySwitchCaps = gSwitches.capabilities 
+                        gSwitches.each { cl ->
+                        def mySwitchCaps = cl.capabilities 
                         mySwitchCaps.commands.each {cap ->
                             if ("$cap.name".contains("setColor")) {
                                 outputTxt =  "Ok, changing your bulbs to " + tts
-                                gSwitches?.setColor(hueSetVals)
-                                log.warn "the color bulb is: $c"
+                                cl?.setColor(hueSetVals)
+                                log.warn "the color bulb is: $cl"
+								//return outputTxt
+                        	}
                         }
                     }
                 }

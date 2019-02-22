@@ -431,7 +431,7 @@ def updated() {
     initialize()
 }
 def initialize() {
-    
+//    getAwsRegion()
 		state.childRevision = null
 //	state.cookie = getCookie1()
         state.alexa = null
@@ -1175,6 +1175,7 @@ def awsSkillConfigPage(){
     atomicState?.actionsProcDone = false
     dynamicPage(name: "awsSkillConfigPage", uninstall: false, install: false) {
         def locale = getSkillLocale()
+        awsLocaleSection()
         if(!locale) { 
             awsLocaleSection() 
         } else {
@@ -1666,6 +1667,21 @@ void procSkillRemoval(data) {
     runIn(2, "actionMaintCheck", [overwrite: true, data:[addPass:true, actType:data?.actType]])
 }
 
+def awsLocaleSection() {
+    section("Alexa Skills Region") {
+        paragraph title: "Why do we need this?", "This allows us to target the appropriate server for your region"
+        input(name: "awsLocale", title:"Please Select your Region", type: "enum", required: true, submitOnChange: true, defaultValue: null, metadata: [values:["US":"US", "UK":"UK"]], image: getAppImg("web.png"))
+    	if (awsLocale == "US") {
+        	input(name: "awsRegion", title:"Please Select your AWS Lambda Region", type: "enum", required: true, submitOnChange: true, defaultValue: "us-east1", metadata: [values:["US East":"us-east-1","US West":"us-west-2"]])
+    	}
+    }
+}
+
+def getAwsRegion() {
+    settings?.awsLocale == "UK" ? "eu-west-1" : "US" ? "${awsRegion}" : null //"us-east-1" //
+    log.warn "awsLocale is: $settings.awsLocale"
+	return
+}
 /*********************************************************************************
                     ALEXA SKILL MANAGEMENT FUNCTIONS - END
 **********************************************************************************/
