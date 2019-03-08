@@ -1,6 +1,7 @@
 /* 
 * EchoSistant Rooms Profile - EchoSistant Add-on
 *
+*		03/08/2019		Version:5.0 R.0.0.7		Added room control and feedback for televisions, fireplace, and garage doors
 *		02/22/2019		Version:5.0 R.0.0.6		Bug fix for humidity and temperature when asking "What's the temperature/humidity"
 *		01/27/2019		Version:5.0 R.0.0.5		Bug fix in color bulbs commands
 *		01/16/2019		Version:5.0 R.0.0.4		Expanded command, delay, restore functions. Expanded music feature to play String on Pandora in the room
@@ -95,7 +96,7 @@ private release() {
 	def text = "R.0.4.6"
 }
 private revision(text) {
-	text = "Version 5.0, Revision 0.0.6"
+	text = "Version 5.0, Revision 0.0.7"
     state.version = "${text}"
     return text
     }
@@ -538,14 +539,16 @@ def cDevices() {
         	input "gGarage", "capability.garageDoorControl", title: "Garage Door(s)...", multiple:true, required: false
             input "gShades",  "capability.windowShade", title: "Window Covering Devices...", multiple: true, required: false 
             }
-        section ("Fans, Vents, and Window Coverings Groups"){ 
+        section ("Environmental Groups"){ 
             input "gVents", "capability.switchLevel", title: "Smart Vent(s)...", multiple: true, required: false
             input "gFans", "capability.switch", title: "Fans and Ceiling Fans...", multiple: true, required: false
+            input "gFire", "capability.switch", title: "Fireplaces...", multiple: true, required: false
         	}                
         section ("Locks") {
         	input "gLock", "capability.lock", title: "Smart Locks...", multiple: true, required: false
             }
         section ("Media"){
+        	input "sTV", "capability.switch", title: "Televisions...", multiple: true, required: false
             input "sMedia", "capability.mediaController", title: "Media Controller", multiple: false, required: false
             input "sSpeaker", "capability.musicPlayer", title: "Media Player Devices (Select your Amazon Echo's Here)", required: false, multiple: true
             input "sSynth", "capability.speechSynthesis", title: "Speech Synthesis Capable Devices", multiple: ttrue, required: false
@@ -733,6 +736,7 @@ def initialize() {
 	parent.state.childRevision = revision(text)
 	parent.webCoRE_init()
     state.tts
+    state.sc
     state.lastMessage
     state.lastTime
     state.lastAction = null
@@ -744,7 +748,7 @@ def initialize() {
     unschedule("startLoop")
     unschedule("continueLoop")
     //SHM status change and keypad initialize
-    subscribe(location, locationHandler)
+//    subscribe(location, locationHandler)
     state.responseTxt = null
     state.lambdaReleaseTxt = "Not Set"
     state.lambdaReleaseDt = "Not Set" 
@@ -842,8 +846,6 @@ def profileFeedbackEvaluate(params) {
     def String outputTxt = (String) null 
     def String scheduler = (String) null     
     def String ttsR = (String) null
-//    def String command = (String) null
-//    def String deviceType = (String) null
     def String colorMatch = (String) null
 if (roomDevice != null) {
 	log.debug "state.deviceId = $deviceId"
@@ -866,8 +868,7 @@ if (roomDevice != null) {
         if (tts.contains("current revision") || tts.contains("current version")) {
             def roomsRev = revision(text)
             def parentRev = parent.release()
-            //        def shortRev = childApps.find.release()
-            outputTxt = "The current Echosistant Parent app Revision is, $parentRev. The Rooms Revision is, $roomsRev" //, and the ShortCuts Revision is $shortRev"
+			outputTxt = "The current Echosistant Parent app Revision is, $parentRev. The Rooms Revision is, $roomsRev" //, and the ShortCuts Revision is $shortRev"
             if (parent.debug) log.debug "Revision Requested: $outputTxt"
             return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
         }
@@ -899,36 +900,6 @@ if (roomDevice != null) {
             if (parent.debug) log.debug "Alexa Device: What's playing: $outputTxt"
             return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
         }
-		// AUTOMATIONS ON OR OFF
-        if (tts.contains("are the automations")) {
-        	gDisable?.each { d ->
-            def status = d.latestValue("switch")
-            log.debug "automations current value is: $status"
-            if ((tts.contains(" on")) && status == "on") {
-            	outputTxt = "Yes, the automations are currently on in the $app.label"
-                }
-                else if (status == "off") {
-                	outputTxt = "No, the automations are currently off in the $app.label"
-                    }
-           }     
-            	
-        	return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
-        }
-
-		// AUDIO NOTIFICATIONS ON OR OFF
-        if (tts.contains("are the notifications")) {
-        	gNotDisable?.each { d ->
-            def status = d.latestValue("switch")
-            if ((tts.contains(" on")) && status == "on") {
-            	outputTxt = "Yes, the notifications are currently on in the $app.label"
-                }
-                else if (status == "off") {
-                	outputTxt = "No, the notifications are currently off in the $app.label"
-                    }
-           }     
-            	
-        	return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
-        }
 
     //  SMART HOME MONITOR STATUS
         if (tts.contains("is the alarm") || tts.contains("security system")) {
@@ -957,18 +928,28 @@ if (roomDevice != null) {
             return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
         }
 
-	//  FEEDBACK HANDLER - 
-		def fDevice = tts.contains("notifications") ? gNotDisable : tts.contains("automations") ? gDisable : tts.contains("eon") ? fPower : tts.contains("iris") ? fPower : tts.contains("vent") ? gVents : tts.contains("light") ? gSwitches : tts.contains("door") ? fDoors : tts.contains("window") ? fWindows : tts.contains("fan") ? gFans : tts.contains("lights") ? gSwitches :
-        tts.contains("TV") ? fSwitches : tts.contains("motion") ? fMotion : tts.contains("lock") ? gLocks : tts.contains("shade") ? gShades : tts.contains("curtains") ? gShades : tts.contains("blinds") ? gShades : tts.startsWith("who") ? fPresence :  null
+	//  FEEDBACK HANDLER - (FEEDBACK PARSING ENGINE) 
+		def fDevice = tts.contains("notifications") ? gNotDisable : tts.contains("automations") ? gDisable : tts.contains("eon") ? fPower : tts.contains("iris") ? fPower : 
+        tts.contains("vent") ? gVents : tts.contains("light") ? gSwitches :  tts.contains("garage") ? gGarage : tts.contains("door") ? fDoors : tts.contains("window") ? fWindows : tts.contains("fireplace") ? gFire : 
+        tts.contains("fan") ? gFans : tts.contains("lights") ? gSwitches : tts.contains("TV") ? fSwitches : tts.contains("motion") ? fMotion : tts.contains("lock") ? gLocks : 
+        tts.contains("shade") ? gShades : tts.contains("curtains") ? gShades : tts.contains("blinds") ? gShades : tts.startsWith("who") ? fPresence :
+        tts.contains("television") ? sTV : tts.contains("lamp") ? gSwitches : tts.contains("automations") ? gSwitches : tts.contains("spotlight") ? gSwitches : 
+        tts.contains("spot") ? gSwitches : tts.contains("outlet") ? gSwitches : tts.contains("strip") ? gSwitches : tts.contains("tv") ? sTV : null
 
-        def fValue = tts.contains("notifications") ? "switch" : tts.contains("automations") ? "switch" : tts.contains("vent") ? "switch" : tts.contains("light") ? "switch" : tts.contains("door") ? "contact" : tts.contains("window") ? "contact" : tts.contains("fan") ? "switch" : tts.contains("lights") ? "switch" : 
-        tts.contains("eon") ? "switch" : tts.contains("iris") ? "switch" : tts.contains("TV") ? "switch" : tts.contains("lock") ? "lock" : tts.contains("shade") ? "windowShade" : tts.contains("blind") ? "windowShade" :  tts.contains("who") ? "presence" : tts.contains("curtains") ? "windowShade" : null
+        def fValue = tts.contains("notifications") ? "switch" : tts.contains("automations") ? "switch" : tts.contains("vent") ? "switch" : tts.contains("light") ? "switch" : tts.contains("garage") ? "door" :
+        tts.contains("door") ? "contact" : tts.contains("window") ? "contact" : tts.contains("fan") ? "switch" : tts.contains("lights") ? "switch" : tts.contains("eon") ? "switch" : 
+        tts.contains("iris") ? "switch" : tts.contains("television") ? "switch" : tts.contains("lock") ? "lock" : tts.contains("shade") ? "windowShade" : tts.contains("blind") ? "windowShade" :  
+        tts.contains("who") ? "presence" : tts.contains("curtains") ? "windowShade" : tts.contains("fireplace") ? "switch" : tts.contains("tv") ? "switch" : tts.contains("tv") ? "switch" :
+        tts.contains("lamp") ? "switch" : tts.contains("spotlight") ? "switch" : tts.contains("spot") ? "switch" : tts.contains("outlet") ? "switch" : tts.contains("strip") ? "switch" :  null
 
-        def fName = tts.contains("notifications") ? "notification" : tts.contains("automations") ? "automation" : tts.contains("motion") ? "motion sensors" : tts.contains("vent") ? "vent" : tts.contains("lock") ? "lock" : tts.contains("door") ? "door" : tts.contains("window") ? "window" : tts.contains("fan") ? "fan" : 
-        tts.contains("light") ? "light" : tts.contains("shade") ? "shade" : tts.contains("blind") ? "blind" : tts.contains("curtains") ? "curtain" : null
+        def fName = tts.contains("notifications") ? "notification" : tts.contains("automations") ? "automation" : tts.contains("motion") ? "motion sensors" : tts.contains("tv") ? "TV" :
+        tts.contains("vent") ? "vent" : tts.contains("lock") ? "lock" : tts.contains("garage door") ? "garage door" : tts.contains("door") ? "door" : tts.contains("window") ? "window" : tts.contains("fan") ? "fan" : 
+        tts.contains("lights") ? "lights" : tts.contains("light") ? "light" : tts.contains("shade") ? "shade" : tts.contains("blind") ? "blind" : tts.contains("curtains") ? "curtain" : 
+        tts.contains("fireplace") ? "fireplace" : tts.contains("television") ? "TV" : tts.contains("lamp") ? "lamp" : tts.contains("spotlight") ? "spotlight" : tts.contains("spot") ? "spot" : 
+        tts.contains("outlet") ? "outlet" : tts.contains("strip") ? "strip" : null
 
-        def fCommand = tts=="who is at home" ? "present" : tts=="who is home" ? "present" : tts=="who is not home" ? "not present" : tts=="who is not at home" ? "not present" : tts.contains("open") ? "open" : 
-        tts.contains("closed") ? "closed" : tts.contains(" on") ? "on" : tts.contains("off") ? "off" : null
+        def fCommand = tts=="who is at home" ? "present" : tts=="who is home" ? "present" : tts=="who is not home" ? "not present" : tts=="who is not at home" ? "not present" : 
+        tts.contains("open") ? "open" : tts.contains("closed") ? "closed" : tts.contains(" on") ? "on" : tts.contains("off") ? "off" : null
 
         if (tts.contains("check") && tts.contains("light")) { fCommand = "on" }
         if (tts.contains("motion")) { fCommand = "active" }
@@ -977,8 +958,9 @@ if (roomDevice != null) {
                 fCommand = "open" }}
 
         //  MISC DEVICES FEEDBACK - BUILDS DEVICE LISTS        
-        if (tts.contains("how") || tts.contains("TV") || tts.contains("who") || tts.contains("window") || tts.contains("vent") || tts.contains("lock") || tts.contains("blind") || tts.contains("curtain") || tts.contains("shade") || 
-        	tts.contains("door") || tts.contains("lights") || tts.contains("fan") || tts.contains("automations") || tts.contains("notifications")) {
+        if (tts.contains("how") || tts.contains("television") || tts.contains("who") || tts.contains("window") || tts.contains("vent") || tts.contains("lock") || tts.contains("blind") || tts.contains("curtain") || 
+        	tts.contains("shade") || tts.contains("garage") || tts.contains("door") || tts.contains("lights")  || tts.contains("light") || tts.contains("fan") || tts.contains("automations") || tts.contains("notifications") || 
+            tts.contains("fireplace") || tts.contains("outlet") || tts.contains("strip") || tts.contains("spot") || tts.contains("spotlight") || tts.contains("lamp") || tts.contains("tv")) {
             if (tts.contains(" on") || tts.endsWith("off") || tts.contains("open") || tts.contains("closed") || tts.endsWith("home") || tts.startsWith("check") || tts.contains("eon") ||tts.contains("switches")) {
                 def devList = [] 
                 if (fDevice == null) {
@@ -991,7 +973,7 @@ if (roomDevice != null) {
                         String device  = (String) deviceName
                         devList += device
                         if (parent.debug) log.debug "devList = $devList"
-                    }
+                        }
           
                 
             // PRESENCE RETURNS //        
@@ -1004,13 +986,13 @@ if (roomDevice != null) {
                     return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
                 }
             // MISC DEVICES RETURNS A YES OR NO //
-                if (tts.startsWith("are") || tts.startsWith("how many")|| tts.startsWith("check")) {
+                if (tts.startsWith("are") || tts.startsWith("how many") || tts.startsWith("check")) {
                     if (devList.size() >= 1) {
                     	if (devList.size() == 1) {
-                        	outputTxt = "There is one $fName " + fCommand + " in the ${app.label} " 
+                        	outputTxt = "Yes, There is one $fName " + fCommand + " in the ${app.label} " 
                             }
                         	else { 
-                        		outputTxt = "There are " + devList.size() + " " + fName + "'s " + fCommand + " in the ${app.label} " 
+                        		outputTxt = "Yes, There are " + devList.size() + " " + fName + "'s " + fCommand + " in the ${app.label} " 
                         	}
                     	}    
                     	else {outputTxt = "There are no ${fName}'s " + fCommand + " in the ${app.label} " 
@@ -1019,8 +1001,8 @@ if (roomDevice != null) {
                     return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
                 }
             // RETURNS A LIST OF DEVICES //        
-                if (tts.startsWith("what") || tts.startsWith("which")) {
-                    if (devList.size() > 0) { 
+                if (tts.startsWith("which") || tts.startsWith("what ")) {
+                    if (devList.size() > 1) { 
                         if (devList.size() == 1) {
                         	outputTxt = "The" + devList + " is the only " + fName + " " + fCommand +  " in the ${app.label} "
                             }
@@ -1030,15 +1012,50 @@ if (roomDevice != null) {
                                 }
                             }
                     		else {
-                            	outputTxt = "There are no $fName's $fCommand in the $app.label" 
+                            	outputTxt = "There aren't any $fName's $fCommand in the $app.label" 
                                 }
                     if (parent.debug) log.debug "List of devices requested: $outputTxt"
                     return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
                 }
+            
+            // RETURNS YES OR NO FOR A DEVICES STATUS
+            if (tts.startsWith("is the")) {
+            	fDevice.each { s ->
+                def lMatch = s.label.toLowerCase()
+                if (parent.debug) log.debug "the matched device, lMatch is: $s"
+                if(tts.contains("television")) {
+                    lMatch = "television"
+                	}
+                if (tts.contains("$lMatch")) {
+                    def fLightsStatus  
+                    if (tts.contains(" door") || tts.contains("window")) {
+                    	fLightsStatus = s?.latestValue("contact")
+                        log.warn "fLightsStatus is: $fLightsStatus"
+                        } else {
+                    		fLightsStatus = s?.latestValue("switch")
+                            }
+                    if (tts.contains("on") || tts.contains("open")) {
+                        if (fLightsStatus == "on" || fLightsStatus == "open") {
+                            outputTxt = "Yes, the $lMatch is $fLightsStatus"
+                        }
+                        if (fLightsStatus == "off" || fLightsStatus == "closed") {
+                            outputTxt = "No, the $lMatch is currently $fLightsStatus"
+                        }
+                    }
+                    else {    
+                        if (fLightsStatus == "off" || fLightsStatus == "closed") {
+                            outputTxt = "Yes, the $lMatch is $fLightsStatus"
+                        }
+                        if (fLightsStatus == "on" || fLightsStatus == "open") {
+                            outputTxt = "No, the $lMatch is currently $fLightsStatus"
+                        	}
+                        }
+                    }
+                }
             }
-        }
-//	return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
-    }
+       }
+   }
+}
 
 	// DIMMERS/LIGHTS INDIVIDUAL LEVELS //
         if  (((tts.contains("how bright is") || tts.contains("what level is the") || tts.contains("what is the"))) && (tts.contains("light") || tts.contains("lamp"))) {
@@ -1057,127 +1074,7 @@ if (roomDevice != null) {
             if (parent.debug) log.debug "Dimmers levels requested: $outputTxt"
             return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
         }    
-    
-    // LIGHTS, & TV INDIVIDUAL FEEDBACK - ON AND OFF STATUS
-        if ((tts.contains("TV") || tts.contains("light") || tts.contains("lamp") || tts.contains("automations") || tts.contains("spotlight") || tts.contains("spot") || tts.contains("plug") || tts.contains("outlet") || tts.contains("strip")) && (tts.contains("on") || tts.contains("off"))) {
-        if (parent.debug) log.debug "Checking to see if a light, or TV is on or off"
-            gSwitches.each { s ->
-                def lMatch = s.label.toLowerCase()
-                if (parent.debug) log.debug "the matched device, lMatch is: $lMatch"
-                if(tts.contains("TV")) {
-                    lMatch = lMatch.toUpperCase()
-                }
-                if (tts.contains("$lMatch")) {
-                    def fLightsStatus = s?.latestValue("switch")
-                    if (tts.contains("on")) {
-                        if (fLightsStatus == "on") {
-                            outputTxt = "Yes, the $lMatch is $fLightsStatus"
-                        }
-                        if (fLightsStatus == "off") {
-                            outputTxt = "No, the $lMatch is currently $fLightsStatus"
-                        }
-                    }
-                    else {    
-                        if (fLightsStatus == " off") {
-                            outputTxt = "Yes, the $lMatch is $fLightsStatus"
-                        }
-                        if (fLightsStatus == "on") {
-                            outputTxt = "No, the $lMatch is currently $fLightsStatus"
-                        }
-                    }
-                }
-            }
-            if (parent.debug) log.debug "Status of Lights/Fans/TV on/off: $outputTxt"
-            return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]		
-        }
-
-    //  GARAGE DOOR STATUS
-        if (tts.contains("is the garage door")) {
-        log.warn "looking for an open garage door"
-            def gDoorStatus = gGarage?.latestValue("door")
-            if (parent.debug) log.debug "garage door status requested"
-            if (tts.contains("open")) {
-                if (gDoorStatus.contains("open")) {
-                    outputTxt = "Yes, the garage door is open"
-                }
-                if (gDoorStatus.contains("closed")) {
-                    outputTxt = "No, the garage door is closed"
-                }
-            }    
-            if (tts.contains("closed")) {
-                if (gDoorStatus.contains("open")) {
-                    outputTxt = "No, the garage door is open"
-                }
-                if (gDoorStatus.contains("closed")) {
-                    outputTxt = "Yes, the garage door is closed"
-                	return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
-                }
-            }
-                   
-            if (parent.debug) log.debug "Garage door status requested: $outputTxt"
-            return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]		
-        } 
-        
-    // WINDOWS INDIVIDUAL FEEDBACK - OPEN AND CLOSED
-        if (tts.contains("window") && (tts.contains("open") || tts.contains("closed"))) {
-        if (parent.debug) log.debug "Window open/closed requested"
-            fWindows.each { c ->
-                def cMatch = c.label.toLowerCase()
-                if (tts.contains("$cMatch")) {
-                    def fWindowsStatus = c?.latestValue("contact")
-                  	if (parent.debug) log.debug "fWindowsStatus is: $fWindowsStatus"
-                    if (tts.contains("open")) {
-                        if (fWindowsStatus == "open") {
-                            outputTxt = "Yes, the $cMatch is $fWindowsStatus"
-                        }
-                        if (fWindowsStatus == "closed") {
-                            outputTxt = "No, the $cMatch is $fWindowsStatus"
-                        }
-                    }
-                    if (tts.contains("closed")) {    
-                        if (fWindowsStatus == "closed") {
-                            outputTxt = "Yes, the $cMatch is $fWindowsStatus"
-                        }
-                        if (fWindowsStatus == "open") {
-                            outputTxt = "No, the $cMatch is $fWindowsStatus"
-                        }
-                    }
-                }
-            } 
-            if (parent.debug) log.debug "Windows open/closed requested: $outputTxt"
-            return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]		
-        }
-        
-        // DOORS INDIVIDUAL FEEDBACK - OPEN AND CLOSED
-        if (tts.contains("door") && (tts.contains("open") || tts.contains("closed"))) {
-        if (parent.debug) log.debug "Doors status requested"
-            fDoors.each { c ->
-                def cMatch = c.label.toLowerCase()
-                if (tts.contains("$cMatch")) {
-                    def fDoorsStatus = c?.latestValue("contact")
-                    if (parent.debug) log.debug "fDoorsStatus is: $fDoorsStatus"
-                    if (tts.contains("open")) {
-                        if (fDoorsStatus == "open") {
-                            outputTxt = "Yes, the $cMatch is $fDoorsStatus"
-                        }
-                        if (fDoorsStatus == "closed") {
-                            outputTxt = "No, the $cMatch is $fDoorsStatus"
-                        }
-                    }
-                    if (tts.contains("closed")) {    
-                        if (fDoorsStatus == "closed") {
-                            outputTxt = "Yes, the $cMatch is $fDoorsStatus"
-                        }
-                        if (fDoorsStatus == "open") {
-                            outputTxt = "No, the $cMatch is $fDoorsStatus"
-                        }
-                    }
-                }
-            } 
-            if (parent.debug) log.debug "Doors status requested: $outputTxt"
-            return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]		
-        }
-
+          
         // CEILING FANS & FANS - SPEEDS AND LEVELS, ON & OFF //
         if (tts.contains("fan")) {
         if ((tts.contains("what speed") || tts.contains("what is the")) && (tts.contains("fan") || tts.contains("fans"))) {
@@ -1240,7 +1137,7 @@ if (roomDevice != null) {
         }		
 
     /// CHECK FOR MOTION
-        if (tts.contains("check") || tts.contains("motion") || tts=="is there" || tts=="is anyone" || tts=="is there anyone" || tts=="is something moving" || tts=="is someone" || tts=="is there someone") {
+        if (tts.contains("motion") || tts=="is there" || tts=="is anyone" || tts=="is there anyone" || tts=="is something moving" || tts=="is someone" || tts=="is there someone") {
             if (parent.debug) log.debug "Motion status requested"
             if (fMotion == null) {
                 if (parent.debug) log.debug "There are no sensors selected for me to determine if there is motion in the ${app.label}"
@@ -1440,12 +1337,6 @@ if (roomDevice != null) {
         return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]	
     }
     }
-//    else {
-//        outputTxt = "Sorry, you must first set up your profile before trying to execute it."
-//        pTryAgain = true
-//    	if(parent.debug) log.debug "running actions, sending result to Parent = ${result}"
-//    	return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
-//		}
     	return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
 	}
 def getShmIncidents() {
@@ -1895,6 +1786,34 @@ def beginProcess(params, tts) {
         state.pContCmds = false
         outputTxt = "Ok, disabling conversational features. To activate just say, start the conversation"
         if (parent.debug) log.debug "Stop Conversation mode requested: $outputTxt"
+        return outputTxt 
+        }
+    // TURNS ON THE TELEVISION 
+    if (tts?.contains("turn on the tv") || tts.contains("turn on the television")) {
+        state.pContCmds = false
+        outputTxt = "Ok, turning on the tv in the $app.label"
+        sTV.on()
+        return outputTxt 
+        }
+    // TURNS OFF THE TELEVISION 
+    if (tts?.contains("turn off the tv") || tts.contains("turn off the television")) {
+        state.pContCmds = false
+        outputTxt = "Ok, turning off the tv in the $app.label"
+        sTV.off()
+        return outputTxt 
+        }
+    // TURNS ON THE FIREPLACE 
+    if (tts?.contains("turn on the fireplace")) {
+        state.pContCmds = false
+        outputTxt = "Ok, turning on the fireplace in the $app.label"
+        gFire.on()
+        return outputTxt 
+        }
+    // TURNS OFF THE FIREPLACE 
+    if (tts?.contains("turn off the fireplace")) {
+        state.pContCmds = false
+        outputTxt = "Ok, turning off the fireplace in the $app.label"
+        gFire.off()
         return outputTxt 
         }
 
@@ -2442,7 +2361,21 @@ def notificationsRestore() {
 /******************************************************************************************************
 SPEECH AND TEXT ALEXA RESPONSE
 ******************************************************************************************************/
+/*def runProfile() {
+log.info "runProfile activated"
+	def tts = state.tts
+    tts = tts.toLowerCase()
+    def sc = childApps?.find {s -> s?.label?.toLowerCase() == tts?.toLowerCase()}
+    log.warn "sc is: $sc.label"
+    def message = sc.message
+    def result = sc.runProfile(message, evt)
+    return result
+//    return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
+}*/
+    
+
 def ttsHandler(tts) {
+    state.tts = tts
     log.debug "ttsHandler method has been activated"
     def String outputTxt = (String) null 
     def cm = app.label
@@ -2450,10 +2383,12 @@ def ttsHandler(tts) {
 	
     def sc = childApps?.find {s -> s?.label?.toLowerCase() == tts?.toLowerCase()}
     if (sc) {
+    state.sc = "$sc.label"
+    log.warn "message = $sc.message"
     sc?.processActions(evt)
-        if (sc.report == true && sc.message != null && sc.pistonMsg == false) {
+        if ((sc.report == true && sc.message != null) && (sc.pistonMsg == false || sc.pistonMsg == null)) {
         	def message = sc.message
-            outputTxt = sc.runProfile(message, evt) 
+            outputTxt = sc.runProfile(message, evt)
             }
         else if (sc.pistonMsg == true) {
         log.info "The piston is producing the audio output"

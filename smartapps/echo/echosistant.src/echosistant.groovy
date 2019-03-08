@@ -441,7 +441,7 @@ def initialize() {
         //REMINDERS
 		sendLocationEvent(name: "EchoSistant v4.5", value: "refresh", data: [profiles: getProfileList()] , isStateChange: true, descriptionText: "Reminders list refresh")
 		//SHM status change and keypad initialize
-    		subscribe(location, locationHandler)
+//    		subscribe(location, locationHandler)
             subscribe(location, "alarmSystemStatus",alarmStatusHandler) //used for ES speaker feedback
             state.esProfiles = state.esProfiles ? state.esProfiles : []
 

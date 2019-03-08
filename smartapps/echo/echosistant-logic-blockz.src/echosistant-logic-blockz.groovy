@@ -3618,7 +3618,7 @@ def runProfile(message, evt) {
 	if (parent.debug) log.info "Message Variables Handler activated"
     def result 
     if(message) {
-        result = message ? "$message".replace("&date", "${getVar("date")}").replace("&time", "${getVar("time")}").replace("&winOpen", "${getVar("winOpen")}") : null
+        result = message ? "$message".replace("&mode", "${getVar("mode")}").replace("&date", "${getVar("date")}").replace("&time", "${getVar("time")}").replace("&winOpen", "${getVar("winOpen")}") : null
         result = result ? "$result".replace("&winClosed", "${getVar("winClosed")}").replace("&doorOpen", "${getVar("doorOpen")}").replace("&doorClosed", "${getVar("doorClosed")}") : null
         result = result ? "$result".replace("&temperature", "${getVar("temperature")}").replace("&tempTrend", "${getVar("tempTrend")}").replace("&humidity", "${getVar("humidity")}") : null
         result = result ? "$result".replace("&windSpeed", "${getVar("windSpeed")}").replace("&windDir", "${getVar("windDir")}").replace("&lightsOn", "${getVar("lightsOn")}") : null
@@ -3626,7 +3626,7 @@ def runProfile(message, evt) {
         result = result ? "$result".replace("&smoke", "${getVar("smoke")}").replace("&CO2", "${getVar("CO2")}").replace("&water", "${getVar("water")}") : null
         result = result ? "$result".replace("&device", "${getVar("device")}").replace("&action", "${getVar("action")}").replace("&stRoutAction", "${getVar("stRoutAction")}") : null
         result = result ? "$result".replace("&stRoutEvent", "${getVar("stRoutEvent")}").replace("&feelsLike", "${getVar("feelsLike")}") : null
-        result = result ? "$result".replace("&shm", "${getVar("shm")}").replace("&mode", "${getVar("mode")}").replace("&humIn", "${getVar("humIn")}").replace("&humOut", "${getVar("humOut")}") : null
+        result = result ? "$result".replace("&shm", "${getVar("shm")}").replace("&humIn", "${getVar("humIn")}").replace("&humOut", "${getVar("humOut")}") : null
         result = result ? "$result".replace("&fans", "${getVar("fans")}").replace("&tempIn", "${getVar("tempIn")}").replace("&tempOut", "${getVar("tempOut")}") : null
 //        result = getWeatherVar(result) 
     }
