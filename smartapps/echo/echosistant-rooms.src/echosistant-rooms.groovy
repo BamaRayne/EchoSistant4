@@ -1077,7 +1077,7 @@ if (roomDevice != null) {
           
         // CEILING FANS & FANS - SPEEDS AND LEVELS, ON & OFF //
         if (tts.contains("fan")) {
-        if ((tts.contains("what speed") || tts.contains("what is the")) && (tts.contains("fan") || tts.contains("fans"))) {
+        if ((tts.contains("what speed") || tts.contains("what level") || tts.contains("how fast") || tts.contains("what is the")) && (tts.contains("fan") || tts.contains("fans"))) {
             if (parent.debug) log.debug "Ceiling fan speed requested"
             gFans?.each { f -> 
                 def fMatch = f.label.toLowerCase()
