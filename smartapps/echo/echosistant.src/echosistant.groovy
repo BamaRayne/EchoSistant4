@@ -652,7 +652,7 @@ def processTts(tts) {
                 	log.warn "Found a second profile: $childName"
                         dataSet = [ptts:ttsText, pintentName:childName] 
 					
-                    if (ptts.startsWith("did") || ptts.startsWith("tell") || ptts.startsWith("get") || ptts.endsWith("tonight") || ptts.contains("weather") || ptts.contains("temperature") || ptts.contains("forecast") || ptts.contains("humidity") || ptts.contains("rain") || ptts.contains("wind")) {
+                    if (ptts.startsWith("did") || ptts.contains("tell me about") || ptts.startsWith("get") || ptts.endsWith("tonight") || ptts.contains("weather") || ptts.contains("temperature") || ptts.contains("forecast") || ptts.contains("humidity") || ptts.contains("rain") || ptts.contains("wind")) {
                     	def pResponse = child.profileFeedbackEvaluate(dataSet)
                         outputTxt = pResponse.outputTxt
                     	pContCmds = pResponse.pContCmds
@@ -660,7 +660,7 @@ def processTts(tts) {
                     	pTryAgain = pResponse.pTryAgain
                     	}
 					if (ptts.startsWith("for") || ptts.startsWith("is") || ptts.startsWith("has") || ptts.startsWith("give") || ptts.startsWith("how") || ptts.startsWith("what") || ptts.startsWith("when") || ptts.startsWith("which") || ptts.startsWith("are") || ptts.startsWith("check") || ptts.startsWith("who")) {
-                        def pResponse = child.profileFeedbackEvaluate(dataSet)
+						def pResponse = child.profileFeedbackEvaluate(dataSet)
                         outputTxt = pResponse.outputTxt
                     	pContCmds = pResponse.pContCmds
                     	pContCmdsR = pResponse.pContCmdsR
@@ -693,14 +693,14 @@ def processTts(tts) {
 					def childRelease = child.checkRelease()
 					log.warn "childRelease = $childRelease"
 
-					if (ptts.startsWith("did") || ptts.startsWith("tell") || ptts.startsWith("get") || ptts.endsWith("tonight") || ptts.contains("weather") || ptts.contains("temperature") || ptts.contains("forecast") || ptts.contains("humidity") || ptts.contains("rain") || ptts.contains("wind")) {
+					if (ptts.startsWith("did") || ptts.startsWith("tell") || ptts.startsWith("get") || ptts.endsWith("tonight") || ptts.contains("weather") || ptts.startsWith("tell me about") || ptts.contains("temperature") || ptts.contains("forecast") || ptts.contains("humidity") || ptts.contains("rain") || ptts.contains("wind")) {
                     	def pResponse = child.profileFeedbackEvaluate(dataSet)
                         outputTxt = pResponse.outputTxt
                     	pContCmds = pResponse.pContCmds
                     	pContCmdsR = pResponse.pContCmdsR
                     	pTryAgain = pResponse.pTryAgain
                     	}
-					if (ptts.startsWith("for") || ptts.startsWith("is") || ptts.startsWith("has") || ptts.startsWith("give") || ptts.startsWith("how") || ptts.startsWith("what") || ptts.startsWith("when") || ptts.startsWith("which") || ptts.startsWith("are") || ptts.startsWith("check") || ptts.startsWith("who")) {
+					if (ptts.startsWith("for") || ptts.startsWith("is") || ptts.startsWith("has") || ptts.startsWith("give") || ptts.startsWith("how") || ptts.startsWith("what") || ptts.startsWith("when") || ptts.startsWith("which") || ptts.startsWith("are") || ptts.startsWith("check") || ptts.startsWith("who") ) {
                         def pResponse = child.profileFeedbackEvaluate(dataSet)
                         outputTxt = pResponse.outputTxt
                     	pContCmds = pResponse.pContCmds
