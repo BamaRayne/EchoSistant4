@@ -1215,7 +1215,7 @@ def awsSkillConfigPage(){
                                         skillVendorData?.each { sk-> 
                                             def sDesc = ""
                                             sDesc += "Invocation: ${getSkillInvoc(sk?.nameByLocale[locale])}"
-                                            sDesc += "\n\nLast Modified:\n${prettyDt(sk?.lastUpdated, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")}"
+                                    //        sDesc += "\n\nLast Modified:\n${prettyDt(sk?.lastUpdated, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")}"
                                             sDesc += "\n\nTap to Open Skill in Alexa App"
                                             href url: getAlexaAppSkillUrl(sk?.skillId), style:"external", title: "${sk?.nameByLocale[locale]}", description: sDesc
                                         }
