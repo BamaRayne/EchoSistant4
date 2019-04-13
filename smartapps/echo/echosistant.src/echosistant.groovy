@@ -8,6 +8,7 @@
  
 ************************************ FOR INTERNAL USE ONLY ******************************************************
 *
+*		04/13/2019	Version: 5.0 R.0.0.3	Added toggle to activate weather alerts checks every 15 minutes
 *		01/13/2019	Version: 5.0 R.0.0.2	Added ability to have multi room commands (turn on lights in living room and turn on lights in kitchen)
 *     	01/12/2019	Version: 5.0 R.0.0.1c	License update/change
 * 		01/12/2019	Version: 5.0 R.0.0.1b	Bug fix for Android/IOS selection
@@ -68,7 +69,7 @@ private def textVersion() {
 	def text = "1.0"
 }
 private release() {
-    def text = "Version 5.0, Revision 0.0.2"
+    def text = "Version 5.0, Revision 0.0.3"
 }
 /**********************************************************************************************************************************************/
 preferences {   
@@ -226,11 +227,16 @@ def mDefaults(){
                 paragraph "You may enter multiple phone numbers separated by comma (E.G. 8045551122,8046663344)"
                 input "push", "bool", title: "Send Push Notification too?", required: false, defaultValue: false
             }
-        }
+        }*/
         section ("Weather Settings") {
-            href "mWeatherConfig", title: "Tap here to configure the Weather defaults", description: "", state: complete
+            input "alertTxt", "bool", title: "Send a text when a weather alert is received", required: false, defaultValue: false, submitOnChange: true
+            	if (alertTxt) {
+                	input name: "sms", title: "Send Text to this number", type: "phone", required: true
+                    }
+                }
+            //href "mWeatherConfig", title: "Tap here to configure the Weather defaults", description: "", state: complete
         }                     
-*/    }
+//    }
 }
 page name: "mProfiles"    
 def mProfiles() {

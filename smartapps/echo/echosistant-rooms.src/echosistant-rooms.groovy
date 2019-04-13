@@ -1,6 +1,7 @@
 /* 
 * EchoSistant Rooms Profile - EchoSistant Add-on
 *
+*		04/13/2019		Version:5.0 R.0.0.10	Added weather alert checks every 15 minutes and ability to ask for a weather alert 
 *		03/14/2019		Version:5.0 R.0.0.9		Bug fix for returning a list of devices in feedback
 *		03/09/2019		Version:5.0 R.0.0.8		Added Thermostats feedback
 *		03/08/2019		Version:5.0 R.0.0.7		Added room control and feedback for televisions, fireplace, and garage doors
@@ -98,7 +99,7 @@ private release() {
 	def text = "R.0.4.6"
 }
 private revision(text) {
-	text = "Version 5.0, Revision 0.0.9"
+	text = "Version 5.0, Revision 0.0.10"
     state.version = "${text}"
     return text
     }
@@ -371,7 +372,10 @@ def pSend(){
         }    
         section ("Push Messages") {
             input "push", "bool", title: "Send Push Notification (optional)", required: false, defaultValue: false
-        }        
+        }
+        section ("Weather Alerts") {
+        	input "activateAlerts", "bool", title: "Activate weather alerts updates. Warning: Activate in ONLY ONE PROFILE", required: false, defaultValue: false
+            }
     }                 
 }   
 
@@ -555,7 +559,7 @@ def cDevices() {
         	input "sTV", "capability.switch", title: "Televisions...", multiple: true, required: false
             input "sMedia", "capability.mediaController", title: "Media Controller", multiple: false, required: false
             input "sSpeaker", "capability.musicPlayer", title: "Media Player Devices (Select your Amazon Echo's Here)", required: false, multiple: true
-            input "sSynth", "capability.speechSynthesis", title: "Speech Synthesis Capable Devices", multiple: ttrue, required: false
+//            input "sSynth", "capability.speechSynthesis", title: "Speech Synthesis Capable Devices", multiple: ttrue, required: false
         }             
         section ("Custom Groups") {
             input "gCustom1N", "text", label: "Name this Group...", multiple: false, required: false, defaultLabel: "Custom Group 1"
@@ -595,6 +599,10 @@ def cDevices() {
         section("Environmental Devices") {
             input "fTemp", "capability.temperatureMeasurement", title: "Devices that Report Temperature...", multiple: true, required: false
 			input "fHum", "capability.relativeHumidityMeasurement", title: "Devices that Report Humidity...", multiple: true, required: false
+/*            input "fWeather", "capability.sensor", title: "Weather Device...", multiple: false, required: false
+            	if (fWeather) {
+                	input "wZipCode", "number", title: "Your zipcode"
+                    }*/
         }
         section("Motion and Presence") {
             input "fPresence", "capability.presenceSensor", title: "Presence Sensors...", required: false, multiple: true
@@ -736,6 +744,9 @@ def updated() {
     if(!atomicState?.isInstalled) { atomicState?.isInstalled = true }
 }
 def initialize() {
+	if (activateAlerts) {
+    	runEvery15Minutes(mGetWeatherAlerts)
+        }
 	def roomName = "$app.label"
 	parent.state.childRevision = revision(text)
 	parent.webCoRE_init()
@@ -876,6 +887,11 @@ if (roomDevice != null) {
 			outputTxt = "The current Echosistant Parent app Revision is, $parentRev. The Rooms Revision is, $roomsRev" //, and the ShortCuts Revision is $shortRev"
             if (parent.debug) log.debug "Revision Requested: $outputTxt"
             return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
+        }
+
+		if ((tts.contains("alert") || tts.contains("alerts")) && tts.contains("weather")) {
+    		outputTxt = verbalWeatherAlerts()
+        	return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
         }
 
         // ALEXA DEVICES - LAST THING SPOKEN
@@ -1365,7 +1381,8 @@ if (roomDevice != null) {
         if (tts=="what's the humidity" || tts=="what is the humidity") {
             outputTxt = "The humidity is currently $humidity percent" }
 
-        if (tts.contains("what is the weather like") || tts.contains("what's the weather like") || tts=="how is it" || tts.contains("what's the weather") || tts.contains("what's it like outside")) {    
+        if (tts.contains("what is the weather like") || tts.contains("what's the weather like") || tts=="how is it" || tts.contains("what's the weather") || tts.contains("what's it like outside") ||
+        	tts.contains("what is the weather")) {    
             outputTxt = "At $outdoorUpdate today, the temperature was $currTemp degrees, $minTemp degrees was the low, and $maxTemp degrees was the high. " +
                 "Currently the temperature is trending $trend, the humidity is $humidity percent, and the wind is blowing at $WindSpeed miles per hour."
             return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]	
@@ -1774,6 +1791,11 @@ def beginProcess(params, tts) {
     def String deviceType = (String) null
     def String colorMatch = (String) null
 
+/*	if (tts.contains("alert") && tts.contains("weather")) {
+    	outputTxt = mGetWeatherAlerts()
+        return outputTxt
+        }
+*/
 	// BLUETOOTH CONNECTION
     if (tts == ("connect to my phone")) {
     //	sSpeaker.connectBluetooth()
@@ -2378,7 +2400,7 @@ def deviceCmd(params, tts) {
 			log.warn "deviceD is: $deviceD"
                 def currLevel = deviceD.latestValue("level")
                 def currState = deviceD.latestValue("switch")
-                def newLevel = parent.cVolLevel*10  
+                def newLevel = parent.cVolLevel//*10  
             if (command == "newVolume" || command == "increase" || command == "decrease" || command == "mute" || command == "unmute" || command == "reset" || command == "create"){
                 if (command == "mute" || command == "unmute") {
                     deviceD."${command}"()
@@ -2393,11 +2415,11 @@ def deviceCmd(params, tts) {
         			return outputTxt
                     }
 				if (command == "increase") {
-                    newLevel =  currLevel + newLevel 
-                    newLevel = newLevel < 0 ? 0 : newLevel > 100 ? 100 : newLevel
+                    newLevel =  "${currLevel}" + "${newLevel}" 
+                    newLevel = "${newLevel}" < 0 ? 0 : "${newLevel}" > 100 ? 100 : "${newLevel}"
                 }
                 if (command == "decrease") {
-                    newLevel =  currLevel - newLevel 
+                	newLevel =  "${currLevel}" - "${newLevel}"
                     newLevel = newLevel < 0 ? 0 : newLevel > 100 ? 100 : newLevel
                 }
                 if (command == "newVolume") {
@@ -2411,8 +2433,8 @@ def deviceCmd(params, tts) {
                 else {                                    
                     if (newLevel == 0 && currState == "on") {deviceD.off()}
                     else {deviceD.setLevel(newLevel)}
-                } 
-                outputTxt = "ok, I will $params.ptts" 
+                }
+                outputTxt = "ok, I will $params.ptts to $newLevel" 
                 return outputTxt
             } 
         }
@@ -2885,7 +2907,10 @@ private void sendtxt(message) {
             sendPushMessage
             if (parent.debug) log.debug "Sending push message to mobile app"
         }
-    } 
+    }
+    if (parent.alertTxt) {
+    	sendAlertMsg(message) 
+        }
     if (notify) {
         sendNotificationEvent(message)
         if (parent.debug) log.debug "Sending notification to mobile app"
@@ -2942,7 +2967,16 @@ private void sendTextvp(message) {
             sendSms(vpPhone, message)
         }
     }
-}    
+}
+private void sendAlertMsg(message) {
+    if (alertPhone != null) {
+        def alertPhones = alertPhone.split("\\,")
+        for (phone in alertPhones) {
+            sendSms(alertPhone, message)
+        }
+    }
+}
+
 private void sendTextGarage(message) {
     if (garagePhone != null) {
         def garagePhones = garagePhone.split("\\,")
@@ -4927,4 +4961,56 @@ def remindRProfiles(evt) {
             break	
     }
     return result
+}
+/***********************************************************************************************************************
+    WEATHER ALERTS
+***********************************************************************************************************************/
+def mGetWeatherAlerts(){
+	def currAlert = "There are no weather alerts for your area"
+    def oldAlert = currAlert
+		def weather = getTwcAlerts() 
+        log.info "weather is: $weather"
+        def alert = weather.alerts.eventDescription[0]
+        def expire = weather.alerts.expireTimeLocal[0]
+        def source = weather.alerts.source[0]
+        	expire = expire?.replaceAll(~/ EST /, " ")?.replaceAll(~/ CST /, " ")?.replaceAll(~/ MST /, " ")?.replaceAll(~/ PST /, " ")
+        	log.warn "alert = ${alert} , expire = ${expire}"   	
+            if(alert != null) {
+            	currAlert = "The " + source + " has issued a " + "${alert}"  + " for the area, that expires at " + expire    
+                oldAlert = currAlert
+                if (parent.alertTxt) {
+                	def message = currAlert
+                    sendtxt(message)
+                if (smc) {
+                sendLocationEvent(name: "SmartMessageControl", value: "ESv5 Room: $app.label", isStateChange: true, descriptionText: "${tts}")
+                }
+			}
+            return currAlert
+		}
+//	return currAlert
+}
+    
+def verbalWeatherAlerts(){
+	def currAlert = "There are no weather alerts for your area"
+    def oldAlert = currAlert
+		def weather = getTwcAlerts() 
+        log.info "weather is: $weather"
+        def alert = weather.alerts.eventDescription[0]
+        def expire = weather.alerts.expireTimeLocal[0]
+        def source = weather.alerts.source[0]
+        	expire = expire?.replaceAll(~/ EST /, " ")?.replaceAll(~/ CST /, " ")?.replaceAll(~/ MST /, " ")?.replaceAll(~/ PST /, " ")
+        	log.warn "alert = ${alert} , expire = ${expire}"   	
+            if(alert != null) {
+            	currAlert = "The " + source + " has issued a " + "${alert}"  + " for the area, that expires at " + expire    
+//                oldAlert = currAlert
+//                if (parent.alertTxt) {
+//def message = currAlert
+//                    sendtxt(message)
+//                if (smc) {
+//                sendLocationEvent(name: "SmartMessageControl", value: "ESv5 Room: $app.label", isStateChange: true, descriptionText: "${tts}")
+//                }
+//			}
+            return currAlert
+		}
+	return currAlert
 }
