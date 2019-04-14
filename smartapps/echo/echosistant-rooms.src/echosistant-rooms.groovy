@@ -348,21 +348,21 @@ page name: "pSend"
 def pSend(){
     dynamicPage(name: "pSend", title: "Audio and Text Message Settings", uninstall: false){
         section ("") {
-        	input "echoDevice", "device.echoSpeaksDevice", title: "Amazon Alexa Devices", multiple: true, required: false
-            	input "eVolume", "number", title: "Set the volume", description: "0-100 (default value = 30)", required: false, defaultValue: 30
-            }
+            input "echoDevice", "device.echoSpeaksDevice", title: "Amazon Alexa Devices", multiple: true, required: false
+            input "eVolume", "number", title: "Set the volume", description: "0-100 (default value = 30)", required: false, defaultValue: 30
+        }
         section (""){
             input "synthDevice", "capability.speechSynthesis", title: "Speech Synthesis Devices", multiple: true, required: false
-        	}
+        }
         section ("") {
             input "sonosDevice", "capability.musicPlayer", title: "Music Player Devices", required: false, multiple: true, submitOnChange: true    
             if (sonosDevice) {
                 input "volume", "number", title: "Temporarily change volume", description: "0-100% (default value = 30%)", required: false
-            	}
             }
+        }
         section ("") {
-        	input "smc", "bool", title: "Send all messages to Smart Message Control", default: false, submitOnChange: true
-            }
+            input "smc", "bool", title: "Send all messages to Smart Message Control", default: false, submitOnChange: true
+        }
         section ("" ) {
             input "sendText", "bool", title: "Enable Text Notifications", required: false, submitOnChange: true     
             if (sendText){      
@@ -373,9 +373,27 @@ def pSend(){
         section ("Push Messages") {
             input "push", "bool", title: "Send Push Notification (optional)", required: false, defaultValue: false
         }
-        section ("Weather Alerts") {
-        	input "activateAlerts", "bool", title: "Activate weather alerts updates. Warning: Activate in ONLY ONE PROFILE", required: false, defaultValue: false
+/*        section ("Weather Alerts") {
+            input "activateAlerts", "bool", title: "Activate weather alerts updates. Warning: Activate in ONLY ONE PROFILE", required: false, defaultValue: false, submitOnChange: true
+            if (activateAlerts) {
+                    input "smcAlert", "bool", title: "Send all messages to Smart Message Control", default: false, submitOnChange: true
+                    if (smcAlert == false) {
+                    input "echoDeviceAlert", "device.echoSpeaksDevice", title: "Amazon Alexa Devices", multiple: true, required: false
+                    	if (echoDeviceAlert) {
+                    		input "eVolumeAlert", "number", title: "Set the volume", description: "0-100 (default value = 30)", required: false, defaultValue: 30
+                            }
+                    input "synthDeviceAlert", "capability.speechSynthesis", title: "Speech Synthesis Devices", multiple: true, required: false
+                    input "sonosDeviceAlert", "capability.musicPlayer", title: "Music Player Devices", required: false, multiple: true, submitOnChange: true    
+                    	if (sonosDeviceAlert) {
+                        	input "volumeAlert", "number", title: "Temporarily change volume", description: "0-100% (default value = 30%)", required: false
+                    	}
+                    }
+                	input "alertTxt", "bool", title: "Send a text when a weather alert is received", required: false, defaultValue: false, submitOnChange: true
+            		if (alertTxt) {
+                	input name: "smsAlert", title: "Send Text to this number", type: "phone", required: true
+                }
             }
+        }*/
     }                 
 }   
 
@@ -747,9 +765,14 @@ def initialize() {
 	if (activateAlerts) {
     	runEvery15Minutes(mGetWeatherAlerts)
         }
+    if (activateAlerts == false) {
+    	unschedule(mGetWeatherAlerts)
+        }
 	def roomName = "$app.label"
 	parent.state.childRevision = revision(text)
 	parent.webCoRE_init()
+    state.currAlert
+    state.oldAlert 
     state.tts
     state.sc
     state.lastMessage
@@ -890,7 +913,7 @@ if (roomDevice != null) {
         }
 
 		if ((tts.contains("alert") || tts.contains("alerts")) && tts.contains("weather")) {
-    		outputTxt = verbalWeatherAlerts()
+    		outputTxt = mGetWeatherAlerts() //verbalWeatherAlerts()
         	return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
         }
 
@@ -1791,11 +1814,6 @@ def beginProcess(params, tts) {
     def String deviceType = (String) null
     def String colorMatch = (String) null
 
-/*	if (tts.contains("alert") && tts.contains("weather")) {
-    	outputTxt = mGetWeatherAlerts()
-        return outputTxt
-        }
-*/
 	// BLUETOOTH CONNECTION
     if (tts == ("connect to my phone")) {
     //	sSpeaker.connectBluetooth()
@@ -2742,6 +2760,35 @@ log.info "ttsactions have been called by: $tts"
         }
         if(parent.debug) log.debug "defined sms = ${ttx}"
     }
+	if (activateAlerts) {
+            if (synthDeviceAlert) {
+                synthDeviceAlert?.speak(String) 
+                if (parent.debug) log.debug "Sending message to Synthesis Devices"
+            }
+            if (smcAlert) {
+//				sendLocationEvent(name: "EchoSistantMsg", value: "ESv4.5 Room: $app.label", isStateChange: true, descriptionText: "${tts}")
+                sendLocationEvent(name: "SmartMessageControl", value: "ESv5 Room: $app.label", isStateChange: true, descriptionText: "${tts}")
+                log.info "Message sent to Smart Message Control: Msg = $tts"
+                }
+            if (echoDeviceAlert) {
+            	settings.echoDeviceAlert.each { spk->
+                	spk.resetQueue()
+                    spk.setVolumeSpeakAndRestore(eVolume, String)
+                	}
+                }
+            if (sonosDeviceAlert){ // 2/22/2017 updated Sono handling when speaker is muted
+                def currVolLevel = sonosDeviceAlert.latestValue("level")
+                def currMuteOn = sonosDeviceAlert.latestValue("mute").contains("muted")
+                if (parent.debug) log.debug "currVolSwitchOff = ${currVolSwitchOff}, vol level = ${currVolLevel}, currMuteOn = ${currMuteOn} "
+                if (currMuteOn) { 
+                    if (parent.debug) log.warn "speaker is on mute, sending unmute command"
+                    sonosDeviceAlert.unmute()
+                }
+                def sVolumeAlert = settings.volume ?: 20
+                sonosDeviceAlert?.playTrackAndResume(state.sound.uri, state.sound.duration, sVolume)
+                if (parent.debug) log.info "Playing message on the music player '${sonosDevice}' at volume '${volume}'" 
+            	}
+            }
     if(state.pMuteAll == false){
         if (getDayOk()==true && getModeOk()==true && getTimeOk()==true) {
             if (synthDevice) {
@@ -2908,7 +2955,7 @@ private void sendtxt(message) {
             if (parent.debug) log.debug "Sending push message to mobile app"
         }
     }
-    if (parent.alertTxt) {
+    if (alertTxt) {
     	sendAlertMsg(message) 
         }
     if (notify) {
@@ -4966,28 +5013,32 @@ def remindRProfiles(evt) {
     WEATHER ALERTS
 ***********************************************************************************************************************/
 def mGetWeatherAlerts(){
-	def currAlert = "There are no weather alerts for your area"
-    def oldAlert = currAlert
+	state.currAlert // = "There are no weather alerts for your area"
+	state.oldAlert 
+    log.info "oldAlert is: $state.oldAlert.  currAlert is: $state.currAlert"
 		def weather = getTwcAlerts() 
-        log.info "weather is: $weather"
         def alert = weather.alerts.eventDescription[0]
         def expire = weather.alerts.expireTimeLocal[0]
         def source = weather.alerts.source[0]
         	expire = expire?.replaceAll(~/ EST /, " ")?.replaceAll(~/ CST /, " ")?.replaceAll(~/ MST /, " ")?.replaceAll(~/ PST /, " ")
-        	log.warn "alert = ${alert} , expire = ${expire}"   	
+        	
             if(alert != null) {
-            	currAlert = "The " + source + " has issued a " + "${alert}"  + " for the area, that expires at " + expire    
-                oldAlert = currAlert
-                if (parent.alertTxt) {
+            	state.currAlert = "The " + source + " has issued a " + "${alert}"  + " for the area, that expires at " + expire    
+                 state.oldAlert = state.currAlert
+                def result = state.currAlert
+                if (alertTxt) {
                 	def message = currAlert
                     sendtxt(message)
-                if (smc) {
-                sendLocationEvent(name: "SmartMessageControl", value: "ESv5 Room: $app.label", isStateChange: true, descriptionText: "${tts}")
-                }
-			}
-            return currAlert
+                    }
+                    def tts = currAlert
+                    ttsActions(tts)
+			return result
 		}
-//	return currAlert
+        else {
+        	state.currAlert = "There are no weather alerts for your area"
+			return state.currAlert
+        }
+//    return state.currAlert    
 }
     
 def verbalWeatherAlerts(){

@@ -228,12 +228,6 @@ def mDefaults(){
                 input "push", "bool", title: "Send Push Notification too?", required: false, defaultValue: false
             }
         }*/
-        section ("Weather Settings") {
-            input "alertTxt", "bool", title: "Send a text when a weather alert is received", required: false, defaultValue: false, submitOnChange: true
-            	if (alertTxt) {
-                	input name: "sms", title: "Send Text to this number", type: "phone", required: true
-                    }
-                }
             //href "mWeatherConfig", title: "Tap here to configure the Weather defaults", description: "", state: complete
         }                     
 //    }
