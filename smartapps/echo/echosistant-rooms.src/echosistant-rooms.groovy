@@ -373,27 +373,6 @@ def pSend(){
         section ("Push Messages") {
             input "push", "bool", title: "Send Push Notification (optional)", required: false, defaultValue: false
         }
-/*        section ("Weather Alerts") {
-            input "activateAlerts", "bool", title: "Activate weather alerts updates. Warning: Activate in ONLY ONE PROFILE", required: false, defaultValue: false, submitOnChange: true
-            if (activateAlerts) {
-                    input "smcAlert", "bool", title: "Send all messages to Smart Message Control", default: false, submitOnChange: true
-                    if (smcAlert == false) {
-                    input "echoDeviceAlert", "device.echoSpeaksDevice", title: "Amazon Alexa Devices", multiple: true, required: false
-                    	if (echoDeviceAlert) {
-                    		input "eVolumeAlert", "number", title: "Set the volume", description: "0-100 (default value = 30)", required: false, defaultValue: 30
-                            }
-                    input "synthDeviceAlert", "capability.speechSynthesis", title: "Speech Synthesis Devices", multiple: true, required: false
-                    input "sonosDeviceAlert", "capability.musicPlayer", title: "Music Player Devices", required: false, multiple: true, submitOnChange: true    
-                    	if (sonosDeviceAlert) {
-                        	input "volumeAlert", "number", title: "Temporarily change volume", description: "0-100% (default value = 30%)", required: false
-                    	}
-                    }
-                	input "alertTxt", "bool", title: "Send a text when a weather alert is received", required: false, defaultValue: false, submitOnChange: true
-            		if (alertTxt) {
-                	input name: "smsAlert", title: "Send Text to this number", type: "phone", required: true
-                }
-            }
-        }*/
     }                 
 }   
 
@@ -543,6 +522,27 @@ def cDevices() {
                     paragraph "Execute this piston by saying, 'Alexa, run piston $myPiston in the $app.label'"
                     }
             	}
+        section ("Weather Alerts") {
+            input "activateAlerts", "bool", title: "Activate weather alerts updates. Warning: Activate in ONLY ONE PROFILE", required: false, defaultValue: false, submitOnChange: true
+            if (activateAlerts) {
+                    input "smcAlert", "bool", title: "Send all messages to Smart Message Control", default: false, submitOnChange: true
+                    if (smcAlert == false) {
+                    input "echoDeviceAlert", "device.echoSpeaksDevice", title: "Amazon Alexa Devices", multiple: true, required: false
+                    	if (echoDeviceAlert) {
+                    		input "eVolumeAlert", "number", title: "Set the volume", description: "0-100 (default value = 30)", required: false, defaultValue: 30
+                            }
+                    input "synthDeviceAlert", "capability.speechSynthesis", title: "Speech Synthesis Devices", multiple: true, required: false
+                    input "sonosDeviceAlert", "capability.musicPlayer", title: "Music Player Devices", required: false, multiple: true, submitOnChange: true    
+                    	if (sonosDeviceAlert) {
+                        	input "volumeAlert", "number", title: "Temporarily change volume", description: "0-100% (default value = 30%)", required: false
+                    	}
+                    }
+                	input "alertTxt", "bool", title: "Send a text when a weather alert is received", required: false, defaultValue: false, submitOnChange: true
+            		if (alertTxt) {
+                	input name: "smsAlert", title: "Send Text to this number", type: "phone", required: true
+                }
+            }
+        }        
         section ("Controllable Devices") {}
         section ("Location and System Settings") {
         	input "allowAlarm", "bool", title: "Can this room control the Smart Home Monitor Alarm system?", required: false, default: false, submitOnChange: true
@@ -771,8 +771,7 @@ def initialize() {
 	def roomName = "$app.label"
 	parent.state.childRevision = revision(text)
 	parent.webCoRE_init()
-    state.currAlert
-    state.oldAlert 
+    state.alertCount
     state.tts
     state.sc
     state.lastMessage
@@ -913,7 +912,7 @@ if (roomDevice != null) {
         }
 
 		if ((tts.contains("alert") || tts.contains("alerts")) && tts.contains("weather")) {
-    		outputTxt = mGetWeatherAlerts() //verbalWeatherAlerts()
+    		outputTxt = verbalWeatherAlerts()
         	return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
         }
 
@@ -5013,55 +5012,59 @@ def remindRProfiles(evt) {
     WEATHER ALERTS
 ***********************************************************************************************************************/
 def mGetWeatherAlerts(){
-	state.currAlert // = "There are no weather alerts for your area"
-	state.oldAlert 
-    log.info "oldAlert is: $state.oldAlert.  currAlert is: $state.currAlert"
-		def weather = getTwcAlerts() 
-        def alert = weather.alerts.eventDescription[0]
-        def expire = weather.alerts.expireTimeLocal[0]
-        def source = weather.alerts.source[0]
-        	expire = expire?.replaceAll(~/ EST /, " ")?.replaceAll(~/ CST /, " ")?.replaceAll(~/ MST /, " ")?.replaceAll(~/ PST /, " ")
-        	
-            if(alert != null) {
-            	state.currAlert = "The " + source + " has issued a " + "${alert}"  + " for the area, that expires at " + expire    
-                 state.oldAlert = state.currAlert
-                def result = state.currAlert
-                if (alertTxt) {
-                	def message = currAlert
-                    sendtxt(message)
-                    }
-                    def tts = currAlert
-                    ttsActions(tts)
-			return result
-		}
-        else {
-        	state.currAlert = "There are no weather alerts for your area"
-			return state.currAlert
+
+    def currAlert 
+    def weather = getTwcAlerts() 
+    def alert = weather.headlineText[0]
+    def source = weather.source[0]
+
+    alert = alert?.replaceAll(~/ EDT /, " ")?.replaceAll(~/ CDT /, " ")?.replaceAll(~/ MDT /, " ")?.replaceAll(~/ PDT /, " ")
+    alert = alert?.replaceAll(~/ SUN /, " Sunday at ")?.replaceAll(~/ MON /, " Monday at ")?.replaceAll(~/ TUE /, " Tuesday at ")
+    alert = alert?.replaceAll(~/ WED /, " Wednesday at ")?.replaceAll(~/ THU /, " THursday at ")?.replaceAll(~/ FRI /, " Friday at ")?.replaceAll(~/ SAT /, " Saturday at ")
+    alert = alert?.replaceAll(~/ EDT/, " ")?.replaceAll(~/ CDT/, " ")?.replaceAll(~/ MDT/, " ")?.replaceAll(~/ PDT/, " ")
+
+    if (alert != null) {
+        currAlert = "The " + source + " has issued a " + alert + " , I repeat: The " + source + " has issued a " + alert
+        if (currAlert != state.oldAlert) {
+            state.oldAlert = currAlert
+            if (alertTxt) {
+                def message = currAlert
+                sendtxt(message)
+            }
+            def tts = currAlert
+            ttsActions(tts)
+            return currAlert
         }
-//    return state.currAlert    
-}
+        else
+            //state.alertCount = false  //UNCOMMENT TO RESET THE CYCLE
+            currAlert = "The severe weather alert has not changed"
+        return currAlert
+    }
+
+    if (alert == null) {
+        state.alertCount = false
+        currAlert = "There are no weather alerts for your area"
+        log.info "Alert Count is: $state.alertCount"
+        return currAlert
+    }
+}    
+
     
 def verbalWeatherAlerts(){
-	def currAlert = "There are no weather alerts for your area"
-    def oldAlert = currAlert
-		def weather = getTwcAlerts() 
-        log.info "weather is: $weather"
-        def alert = weather.alerts.eventDescription[0]
-        def expire = weather.alerts.expireTimeLocal[0]
-        def source = weather.alerts.source[0]
-        	expire = expire?.replaceAll(~/ EST /, " ")?.replaceAll(~/ CST /, " ")?.replaceAll(~/ MST /, " ")?.replaceAll(~/ PST /, " ")
-        	log.warn "alert = ${alert} , expire = ${expire}"   	
-            if(alert != null) {
-            	currAlert = "The " + source + " has issued a " + "${alert}"  + " for the area, that expires at " + expire    
-//                oldAlert = currAlert
-//                if (parent.alertTxt) {
-//def message = currAlert
-//                    sendtxt(message)
-//                if (smc) {
-//                sendLocationEvent(name: "SmartMessageControl", value: "ESv5 Room: $app.label", isStateChange: true, descriptionText: "${tts}")
-//                }
-//			}
-            return currAlert
-		}
-	return currAlert
+    def currAlert = "There are no weather alerts for your area"
+    def weather = getTwcAlerts() 
+    log.info "weather is: $weather"
+    def alert = weather.headlineText[0]
+    def source = weather.source[0]
+    alert = alert?.replaceAll(~/ EDT /, " ")?.replaceAll(~/ CDT /, " ")?.replaceAll(~/ MDT /, " ")?.replaceAll(~/ PDT /, " ")
+    alert = alert?.replaceAll(~/ SUN /, " Sunday at ")?.replaceAll(~/ MON /, " Monday at ")?.replaceAll(~/ TUE /, " Tuesday at ")
+    alert = alert?.replaceAll(~/ WED /, " Wednesday at ")?.replaceAll(~/ THU /, " THursday at ")?.replaceAll(~/ FRI /, " Friday at ")?.replaceAll(~/ SAT /, " Saturday at ")
+    alert = alert?.replaceAll(~/ EDT/, " ")?.replaceAll(~/ CDT/, " ")?.replaceAll(~/ MDT/, " ")?.replaceAll(~/ PDT/, " ")
+    
+    log.info "alert is: $alert"
+    if(alert != null) {
+        currAlert = "The " + source + " has issued a " + alert + " , I repeat: The " + source + " has issued a " + alert
+        return currAlert
+    }
+    return currAlert
 }
