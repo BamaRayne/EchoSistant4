@@ -1,6 +1,7 @@
 /* 
 * EchoSistant Rooms Profile - EchoSistant Add-on
 *
+*		04/20/2019		Version:5.0	R.0.0.11	Updated and fixed bugs in weather alerts. Also added restrictions check for weather alerts
 *		04/13/2019		Version:5.0 R.0.0.10	Added weather alert checks every 15 minutes and ability to ask for a weather alert 
 *		03/14/2019		Version:5.0 R.0.0.9		Bug fix for returning a list of devices in feedback
 *		03/09/2019		Version:5.0 R.0.0.8		Added Thermostats feedback
@@ -99,7 +100,7 @@ private release() {
 	def text = "R.0.4.6"
 }
 private revision(text) {
-	text = "Version 5.0, Revision 0.0.10"
+	text = "Version 5.0, Revision 0.0.11"
     state.version = "${text}"
     return text
     }
@@ -617,10 +618,7 @@ def cDevices() {
         section("Environmental Devices") {
             input "fTemp", "capability.temperatureMeasurement", title: "Devices that Report Temperature...", multiple: true, required: false
 			input "fHum", "capability.relativeHumidityMeasurement", title: "Devices that Report Humidity...", multiple: true, required: false
-/*            input "fWeather", "capability.sensor", title: "Weather Device...", multiple: false, required: false
-            	if (fWeather) {
-                	input "wZipCode", "number", title: "Your zipcode"
-                    }*/
+            input "fWeather", "capability.sensor", title: "Weather Device for local environment feedback...", multiple: false, required: false
         }
         section("Motion and Presence") {
             input "fPresence", "capability.presenceSensor", title: "Presence Sensors...", required: false, multiple: true
@@ -772,6 +770,7 @@ def initialize() {
 	parent.state.childRevision = revision(text)
 	parent.webCoRE_init()
     state.alertCount
+    state.newAlert
     state.tts
     state.sc
     state.lastMessage
@@ -913,8 +912,8 @@ if (roomDevice != null) {
 
 		if ((tts.contains("alert") || tts.contains("alerts")) && tts.contains("weather")) {
     		outputTxt = verbalWeatherAlerts()
-        	return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
-        }
+            return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
+		}
 
         // ALEXA DEVICES - LAST THING SPOKEN
         if (tts.contains("last thing said")) {
@@ -1405,11 +1404,18 @@ if (roomDevice != null) {
 
         if (tts.contains("what is the weather like") || tts.contains("what's the weather like") || tts=="how is it" || tts.contains("what's the weather") || tts.contains("what's it like outside") ||
         	tts.contains("what is the weather")) {    
+       //     def todayForecast = fWeather.currentValue("forecastTonight")
+       //     outputTxt = "$todayForecast"
             outputTxt = "At $outdoorUpdate today, the temperature was $currTemp degrees, $minTemp degrees was the low, and $maxTemp degrees was the high. " +
                 "Currently the temperature is trending $trend, the humidity is $humidity percent, and the wind is blowing at $WindSpeed miles per hour."
             return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]	
         }
-	}
+        if (tts.contains("feel like")) {
+        	def feel = fWeather.currentValue("feelsLike")
+            outputTxt = "With the current conditions it feels like it is $feel degrees"
+            return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]	
+		}
+    }
   //      if (parent.debug) log.debug "outputTxt = $outputTxt"        
   //      return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]	
 
@@ -2759,13 +2765,12 @@ log.info "ttsactions have been called by: $tts"
         }
         if(parent.debug) log.debug "defined sms = ${ttx}"
     }
-	if (activateAlerts) {
+	if (activateAlerts && getDayOk()==true && getModeOk()==true && getTimeOk()==true) {
             if (synthDeviceAlert) {
                 synthDeviceAlert?.speak(String) 
                 if (parent.debug) log.debug "Sending message to Synthesis Devices"
             }
             if (smcAlert) {
-//				sendLocationEvent(name: "EchoSistantMsg", value: "ESv4.5 Room: $app.label", isStateChange: true, descriptionText: "${tts}")
                 sendLocationEvent(name: "SmartMessageControl", value: "ESv5 Room: $app.label", isStateChange: true, descriptionText: "${tts}")
                 log.info "Message sent to Smart Message Control: Msg = $tts"
                 }
@@ -2795,7 +2800,6 @@ log.info "ttsactions have been called by: $tts"
                 if (parent.debug) log.debug "Sending message to Synthesis Devices"
             }
             if (smc) {
-//				sendLocationEvent(name: "EchoSistantMsg", value: "ESv4.5 Room: $app.label", isStateChange: true, descriptionText: "${tts}")
                 sendLocationEvent(name: "SmartMessageControl", value: "ESv5 Room: $app.label", isStateChange: true, descriptionText: "${tts}")
                 log.info "Message sent to Smart Message Control: Msg = $tts"
                 }
@@ -5011,47 +5015,8 @@ def remindRProfiles(evt) {
 /***********************************************************************************************************************
     WEATHER ALERTS
 ***********************************************************************************************************************/
-def mGetWeatherAlerts(){
-
-    def currAlert 
-    def weather = getTwcAlerts() 
-    def alert = weather.headlineText[0]
-    def source = weather.source[0]
-
-    alert = alert?.replaceAll(~/ EDT /, " ")?.replaceAll(~/ CDT /, " ")?.replaceAll(~/ MDT /, " ")?.replaceAll(~/ PDT /, " ")
-    alert = alert?.replaceAll(~/ SUN /, " Sunday at ")?.replaceAll(~/ MON /, " Monday at ")?.replaceAll(~/ TUE /, " Tuesday at ")
-    alert = alert?.replaceAll(~/ WED /, " Wednesday at ")?.replaceAll(~/ THU /, " THursday at ")?.replaceAll(~/ FRI /, " Friday at ")?.replaceAll(~/ SAT /, " Saturday at ")
-    alert = alert?.replaceAll(~/ EDT/, " ")?.replaceAll(~/ CDT/, " ")?.replaceAll(~/ MDT/, " ")?.replaceAll(~/ PDT/, " ")
-
-    if (alert != null) {
-        currAlert = "The " + source + " has issued a " + alert + " , I repeat: The " + source + " has issued a " + alert
-        if (currAlert != state.oldAlert) {
-            state.oldAlert = currAlert
-            if (alertTxt) {
-                def message = currAlert
-                sendtxt(message)
-            }
-            def tts = currAlert
-            ttsActions(tts)
-            return currAlert
-        }
-        else
-            //state.alertCount = false  //UNCOMMENT TO RESET THE CYCLE
-            currAlert = "The severe weather alert has not changed"
-        return currAlert
-    }
-
-    if (alert == null) {
-        state.alertCount = false
-        currAlert = "There are no weather alerts for your area"
-        log.info "Alert Count is: $state.alertCount"
-        return currAlert
-    }
-}    
-
-    
 def verbalWeatherAlerts(){
-    def currAlert = "There are no weather alerts for your area"
+    def currAlert = "There are no weather alerts for your area at this time"
     def weather = getTwcAlerts() 
     log.info "weather is: $weather"
     def alert = weather.headlineText[0]
@@ -5067,4 +5032,66 @@ def verbalWeatherAlerts(){
         return currAlert
     }
     return currAlert
+}
+
+// SCHEDULED WEATHER ALERT CHECKS (EVERY 15 MINUTES)
+def mGetWeatherAlerts(){
+	def tts
+    def currAlert
+	def weather = getTwcAlerts() 
+    def alert = weather.headlineText[0]
+    def source = weather.source[0]
+
+    alert = alert?.replaceAll(~/ EDT /, " ")?.replaceAll(~/ CDT /, " ")?.replaceAll(~/ MDT /, " ")?.replaceAll(~/ PDT /, " ")
+    alert = alert?.replaceAll(~/ SUN /, " Sunday at ")?.replaceAll(~/ MON /, " Monday at ")?.replaceAll(~/ TUE /, " Tuesday at ")
+    alert = alert?.replaceAll(~/ WED /, " Wednesday at ")?.replaceAll(~/ THU /, " THursday at ")?.replaceAll(~/ FRI /, " Friday at ")?.replaceAll(~/ SAT /, " Saturday at ")
+    alert = alert?.replaceAll(~/ EDT/, " ")?.replaceAll(~/ CDT/, " ")?.replaceAll(~/ MDT/, " ")?.replaceAll(~/ PDT/, " ")
+
+if (alert != null) {
+	
+    if (state.oldAlert == null) {  // New alert issued
+		currAlert = "The " + source + " has issued a " + alert + " , I repeat: The " + source + " has issued a " + alert
+        state.oldAlert = "${currAlert}"
+        log.info "Line 2 - output should be a new alert: $currAlert  & oldAlert is: $state.oldAlert"
+   		tts = currAlert
+        ttsActions(tts)
+    //    return currAlert
+        }
+	if (state.oldAlert != null) {  // Alert already issued but now has been updated
+		currAlert = "The " + source + " has issued a " + alert + " , I repeat: The " + source + " has issued a " + alert
+        if (state.oldAlert != currAlert) {  
+        state.oldAlert = "${currAlert}" 
+        log.info "Line 3 - output should be a changed alert: $currAlert  & oldAlert is: $state.oldAlert"
+        tts = currAlert
+        ttsActions(tts)
+    //    return currAlert
+        }
+        if (state.oldAlert == currAlert) {  // The alert has not changed since the last check
+        state.oldAlert = "${currAlert}" 
+        log.info "Line 5 - output should be an unchanged alert: $currAlert  & oldAlert is: $state.oldAlert"
+        def thing = "Unchanged Alert"
+        return thing
+        }
+    }
+}
+
+if (alert == null) {
+log.info "Alert is $alert & oldAlert starts as: $oldAlert"
+	if (state.oldAlert != null) {  // current alert has been lifted
+		currAlert = "The alert for your area has been lifted, I repeat, the alert for your area has been lifted"
+        state.oldAlert = null
+		log.info "Line 4 - output should be alert lifted: $currAlert  & oldAlert is: $state.oldAlert"
+   		tts = currAlert
+        ttsActions(tts)
+   //     return currAlert
+        }
+	if (state.oldAlert == null)  {  // no weather alert
+		currAlert = "There are currently no alerts for your area"
+        state.oldAlert = null 
+		log.info "Line 1 - output should be no alert: $currAlert  & oldAlert is: $state.oldAlert"
+   	//	tts = currAlert
+    //    ttsActions(tts)
+        return currAlert
+        }
+    }    
 }
