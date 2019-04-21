@@ -524,7 +524,8 @@ def cDevices() {
                     }
             	}
         section ("Weather Alerts") {
-            input "activateAlerts", "bool", title: "Activate weather alerts updates. Warning: Activate in ONLY ONE PROFILE", required: false, defaultValue: false, submitOnChange: true
+            input "activateAlerts", "bool", title: "Activate automatic weather alert updates. Warning: Activate in ONLY ONE PROFILE", required: false, defaultValue: false, submitOnChange: true
+       //     input "variables", "enum", title: "Select a variable", required: false, options: [[tor:"Tornado"]], submitOnChange: true 
             if (activateAlerts) {
                     input "smcAlert", "bool", title: "Send all messages to Smart Message Control", default: false, submitOnChange: true
                     if (smcAlert == false) {
@@ -825,7 +826,7 @@ def initialize() {
         if (state.trackerFour == null) {state.trackerFour = "I'm sorry, I have not been told when the ${trackerFour1} was ${trackerFour1}" }
     }
     //LOGIC BLOCKS
-        subscribe(location, "RemindRevent", remindRHandler)
+    	subscribe(location, "RemindRevent", remindRHandler)
         subscribe(location, "remindR", remindRProfiles)
         state.thePaused = null
         state.theRunning = null
@@ -2164,7 +2165,7 @@ def deviceCmd(params, tts) {
         return outputTxt
     }
     
-        if (tts.contains("fan") && (command == "on" || command == "off")) {  // INDIVIDUAL FANS ON/OFF
+        if (tts.contains(" fan") && (command == "on" || command == "off")) {  // INDIVIDUAL FANS ON/OFF
             gFans?.each { m -> 
                 mMatch = m.label.toLowerCase()
                 def lvlNow = m.latestValue("level")
@@ -3763,11 +3764,11 @@ def mIntentD() {
 
 // DEVICE CONTROL GROUPS                         
 def pGroupSettings() {def result = ""
-                      if (cSwitches || gSwitches || mode || gDisable || gSwitches || gFans || gHues || sVent || sMedia || sSpeaker) {
+                      if (gSwitches || mode || gDisable || gSwitches || gFans || gHues || sVent || sMedia || sSpeaker) {
                           result = "complete"}
                       result}
 def pGroupComplete() {def text = "Tap here to Configure" 
-                      if (cSwitches || gSwitches || mode || gDisable || gSwitches || gFans || gHues || sVent || sMedia || sSpeaker) {
+                      if (gSwitches || mode || gDisable || gSwitches || gFans || gHues || sVent || sMedia || sSpeaker) {
                           text = "Configured"}
                       else text = "Tap here to Configure"
                       text
@@ -5016,6 +5017,8 @@ def remindRProfiles(evt) {
     WEATHER ALERTS
 ***********************************************************************************************************************/
 def verbalWeatherAlerts(){
+    def pws = getTwcPwsConditions("KALCHELS18")
+    log.info "personal is: $pws"
     def currAlert = "There are no weather alerts for your area at this time"
     def weather = getTwcAlerts() 
     log.info "weather is: $weather"
@@ -5050,7 +5053,7 @@ def mGetWeatherAlerts(){
 if (alert != null) {
 	
     if (state.oldAlert == null) {  // New alert issued
-		currAlert = "The " + source + " has issued a " + alert + " , I repeat: The " + source + " has issued a " + alert
+		currAlert = "Attention, The " + source + " has issued a " + alert + " , I repeat: The " + source + " has issued a " + alert
         state.oldAlert = "${currAlert}"
         log.info "Line 2 - output should be a new alert: $currAlert  & oldAlert is: $state.oldAlert"
    		tts = currAlert
@@ -5058,7 +5061,7 @@ if (alert != null) {
     //    return currAlert
         }
 	if (state.oldAlert != null) {  // Alert already issued but now has been updated
-		currAlert = "The " + source + " has issued a " + alert + " , I repeat: The " + source + " has issued a " + alert
+		currAlert = "Attention, the weather has been updated:  The " + source + " has issued a " + alert + " , I repeat: The " + source + " has issued a " + alert
         if (state.oldAlert != currAlert) {  
         state.oldAlert = "${currAlert}" 
         log.info "Line 3 - output should be a changed alert: $currAlert  & oldAlert is: $state.oldAlert"
@@ -5078,7 +5081,7 @@ if (alert != null) {
 if (alert == null) {
 log.info "Alert is $alert & oldAlert starts as: $oldAlert"
 	if (state.oldAlert != null) {  // current alert has been lifted
-		currAlert = "The alert for your area has been lifted, I repeat, the alert for your area has been lifted"
+		currAlert = "Attention, The alert for your area has been lifted, I repeat, the alert for your area has been lifted"
         state.oldAlert = null
 		log.info "Line 4 - output should be alert lifted: $currAlert  & oldAlert is: $state.oldAlert"
    		tts = currAlert
@@ -5095,3 +5098,6 @@ log.info "Alert is $alert & oldAlert starts as: $oldAlert"
         }
     }    
 }
+
+
+    
