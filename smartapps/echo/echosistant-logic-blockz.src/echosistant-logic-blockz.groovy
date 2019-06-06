@@ -208,7 +208,7 @@ def eventsPage() {
     if (events != null) {
     if (events.contains("Location & Schedules")) {
     section ("Location Settings Events", hideable: true) {
-            input "tMode", "mode", title: "Location Mode", multiple: true, required: false//, submitOnChange: true
+            input "tMode", "mode", title: "Location Mode", multiple: true, required: false
         	input "tSHM", "enum", title: "Smart Home Monitor", options:["away":"Armed (Away)","stay":"Armed (Home)","off":"Disarmed"], multiple: false, required: false, submitOnChange: true
 			input "tRoutine", "enum", title: "SmartThings Routines", options: actions, multiple: true, required: false            
 			input "mySunState", "enum", title: "Sunrise or Sunset...", options: ["Sunrise", "Sunset"], multiple: false, required: false, submitOnChange: true
@@ -416,9 +416,9 @@ def conditions() {
         section ("Location Settings Conditions") {
             input "cMode", "mode", title: "Location Mode is...", multiple: true, required: false, submitOnChange: true
         	input "cSHM", "enum", title: "Smart Home Monitor is...", options:["away":"Armed (Away)","stay":"Armed (Home)","off":"Disarmed"], multiple: false, required: false, submitOnChange: true
-            input "cDays", title: "Days of the week", multiple: true, required: false, submitOnChange: true,
+            input "cDays", title: "On these Days of the week", multiple: true, required: false, submitOnChange: true,
                 "enum", options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-            href "certainTime", title: "Time Schedule", description: pTimeComplete(), state: pTimeSettings()
+            href "certainTime", title: "On this Time Schedule", description: pTimeComplete(), state: pTimeSettings()
         }         
         section ("Switch and Dimmer Conditions") {
             input "cSwitch", "capability.switch", title: "Switches", multiple: true, submitOnChange: true, required:false
@@ -1042,8 +1042,8 @@ def updated() {
 
 def initialize() {
 	log.info "The parent pause toggle is $parent.aPause and this routines pause toggle is $rPause"
-//    if (rPause == false) { unschedule() }
-//    if (rPause == true) {
+    if (rPause == false) { unschedule() }
+    if (rPause == true) {
     parent.parent.webCoRE_init()
     // Misc Variables
     state.tSelfHandlerEvt = null
@@ -1133,10 +1133,10 @@ def initialize() {
     
 
 
-//	else if (rPause == false) {
-//    	log.info "This routine has been paused by the user"
-//        }
-//}
+	else if (rPause == false) {
+    	log.info "This routine has been paused by the user"
+        }
+}
 
 /************************************************************************************************************
 	ROUTING METHOD

@@ -1,6 +1,7 @@
 /* 
 * EchoSistant Rooms Profile - EchoSistant Add-on
 *
+*		06/06/2019		Version:5.0 R.0.0.14	Minor bug fixes and tweaks to different things
 *		05/23/2019		Version:5.0 R.0.0.13	Added ability to ask when a contact status was last changed, and when a person last arrived/departed
 *		04/21/2019		Version:5.0 R.0.0.12	Bug fix when asking WHAT in feedback. Added "Tell me about the xxx devices"
 *		04/20/2019		Version:5.0	R.0.0.11	Updated and fixed bugs in weather alerts. Also added restrictions check for weather alerts
@@ -102,7 +103,7 @@ private release() {
 	def text = "R.0.4.6"
 }
 private revision(text) {
-	text = "Version 5.0, Revision 0.0.13"
+	text = "Version 5.0, Revision 0.0.14"
     state.version = "${text}"
     return text
     }
@@ -948,7 +949,7 @@ if (roomDevice != null) {
         }
 
     //  SMART HOME MONITOR STATUS
-        if (tts.contains("is the alarm") || tts.contains("security system") || tts.contains("smart home monitor")) {
+        if (tts.contains("check the alarm") || tts.contains("is the alarm") || tts.contains("security system") || tts.contains("smart home monitor")) {
             def currentSHM = location.currentState("alarmSystemStatus")?.value
             def shmStatus = currentSHM == "stay" ? "armed home" : currentSHM == "away" ? "armed away" : currentSHM == "off" ? "set to disarmed" : null
             if (tts.contains(" on") || tts.contains(" armed")) {
@@ -963,6 +964,9 @@ if (roomDevice != null) {
                     outputTxt = "Yes, the alarm is currently $shmStatus"
                 }
             }
+            if (tts.contains("check the alarm")) {
+            	outputTxt = "The alarm is currently $shmStatus"
+                }    
             if (parent.debug) log.debug "$outputTxt"
             return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN] 
         }
@@ -994,9 +998,9 @@ if (roomDevice != null) {
         tts.contains("vent") ? "vent" : tts.contains("lock") ? "lock" : tts.contains("garage door") ? "garage door" : tts.contains("doors") ? "doors" : tts.contains("door") ? "door" : tts.contains("windows") ? "windows" : tts.contains("fan") ? "fan" : 
         tts.contains("lights") ? "lights" : tts.contains("light") ? "light" : tts.contains("shade") ? "shade" : tts.contains("blind") ? "blind" : tts.contains("curtains") ? "curtain" : tts.contains("window") ? "window" :
         tts.contains("fireplace") ? "fireplace" : tts.contains("television") ? "TV" : tts.contains("lamp") ? "lamp" : tts.contains("spotlight") ? "spotlight" : tts.contains("spot") ? "spot" : 
-        tts.contains("outlet") ? "outlet" : tts.contains("strip") ? "strip" : null
+        tts.contains("outlet") ? "outlet" : tts.contains("strip") ? "strip" : tts.contains("who") ? "presence" : null
 
-        def fCommand = tts=="who is at home" ? "present" : tts=="who is home" ? "present" : tts=="who is not home" ? "not present" : tts=="who is not at home" ? "not present" : tts.contains("open") ? "open" : tts.contains("closed") ? "closed" : tts.contains(" on") ? "on" : tts.contains("off") ? "off" : null
+        def fCommand = tts=="who is" ? "present" : tts=="who is not" ? "not present" : tts=="who is at home" ? "present" : tts=="who is home" ? "present" : tts=="who is not home" ? "not present" : tts=="who is not at home" ? "not present" : tts.contains("open") ? "open" : tts.contains("closed") ? "closed" : tts.contains(" on") ? "on" : tts.contains("off") ? "off" : null
 
         if (tts.contains("check") && tts.contains("light")) { fCommand = "on" }
         if (tts.contains("motion")) { fCommand = "active" }
@@ -1012,7 +1016,7 @@ if (roomDevice != null) {
             }
         }    
                 
-        
+        log.info "fDevice: $fDevice, fValue: $fValue, fName: $fName, fCommand: $fCommand"
         if (tts.contains("when was ") || tts.contains("when did ")) {
             log.warn "the devices are: $fDevice"
 
@@ -1055,7 +1059,7 @@ if (roomDevice != null) {
         if (tts.contains("tell me about the") || tts.contains("how") || tts.contains("television") || tts.contains("who") || tts.contains("window") || tts.contains("vent") || tts.contains("lock") || tts.contains("blind") || tts.contains("curtain") || 
         	tts.contains("shade") || tts.contains("garage") || tts.contains("door") || tts.contains("lights")  || tts.contains("light") || tts.contains("fan") || tts.contains("automations") || tts.contains("notifications") || 
             tts.contains("fireplace") || tts.contains("outlet") || tts.contains("strip") || tts.contains("spot") || tts.contains("spotlight") || tts.contains("lamp") || tts.contains("tv") || tts.contains("windows") || tts.contains("what")) {
-            if (tts.startsWith("tell me about") || tts.contains(" on") || tts.endsWith("off") || tts.contains("open") || tts.contains("closed") || tts.endsWith("home") || tts.startsWith("check") || tts.contains("eon") ||tts.contains("switches")) {
+            if (tts.startsWith("tell me about") || tts.contains(" on") || tts.endsWith("off") || tts.contains("open") || tts.contains("closed") || tts.startsWith("who is") || tts.endsWith("home") || tts.startsWith("check") || tts.contains("eon") ||tts.contains("switches")) {
                 def devList = [] 
                 if (fDevice == null) {
                     outputTxt = "I'm sorry, it seems that you have not selected any devices for this query, please configure your feedback devices in the EchoSistant smartapp."
@@ -1069,7 +1073,7 @@ if (roomDevice != null) {
                         }
           
              // PRESENCE RETURNS //        
-                if (tts.startsWith("who") && (tts.endsWith("home") ||tts.endsWith("at home"))) {
+                if (tts.startsWith("who") && (tts.endsWith("home") || tts.endsWith("at home") || tts.endsWith("is") || tts.endsWith("not"))) {
                     if (devList.size() >0) {
                         if (devList.size() == 1) { outputTxt = "The only person $fCommand is $devList" }
                         if (devList.size() >1) { outputTxt = "The following people are $fCommand, $devList" }}
@@ -1119,7 +1123,7 @@ if (roomDevice != null) {
                     lMatch = "television"
                 	}
                 if (tts.contains("$lMatch")) {
-                    def fLightsStatus  
+                    def fLightsStatus
                     if (tts.contains(" door") || tts.contains("window")) {
                     	fLightsStatus = s?.latestValue("contact")
                         log.warn "fLightsStatus is: $fLightsStatus"
@@ -1423,6 +1427,7 @@ if (roomDevice != null) {
         def WindSpeed = fWind?.currentValue("WindStrength")
         def WindDir = fWind?.currentValue("WindDirection")
         def WindUpdate = fWind?.currentValue("lastupdate")
+        def RainTotal = fRain?.currentValue("rainSumDay")
         def RainFall = fRain?.currentValue("rain")
         def RainUpdate = fRain?.currentValue("lastupdate")
         def humidity = fOutDoor?.currentValue("humidity")
@@ -1444,10 +1449,10 @@ if (roomDevice != null) {
 
         if (tts=="is it raining") {
             if (RainFall == 0) { outputTxt = "No, it is not currently raining" } 
-            if (RainFall > 0) { outputTxt = "Yes, as of $RainUpdate, there has been $RainFall inches of rain" } }
+            if (RainFall > 0) { outputTxt = "Yes, it is raining" } }
         if (tts=="has it rained" || tts=="did it rain" || tts.contains("how much has it rained")) {
             if (RainFall == 0) { outputTxt = "There has not been any rain recorded in the past 24 hours" } 
-            if (RainFall > 0) { outputTxt = "Yes, as of $RainUpdate, there has been $RainFall inches of rain" } }
+            if (RainFall > 0) { outputTxt = "As of $RainUpdate, there has been $RainTotal inches of rain today" } }
         if (tts.contains("will it rain") || tts.contains("going to rain")) {
             outputTxt = "I'm sorry, I can not forecast the rain. Please simply say, Alexa, is it going to rain" }
 
@@ -2945,8 +2950,9 @@ log.info "ttsactions have been called by: $tts"
     }
     else if (push) {
         sendPushMessage(tts)
-    }    
-    state.lastMessage = tts
+    }
+    def stamp = new Date(now()).format("h:mm aa", location.timeZone)
+    state.lastMessage = tts + ", and it was sent at " + stamp 
     return ["outputTxt":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN]
 }
 
