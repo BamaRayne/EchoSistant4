@@ -8,6 +8,7 @@
  
 ************************************ FOR INTERNAL USE ONLY ******************************************************
 *
+*		06/04/2019	Version: 5.0 R.0.0.4	Changed Lambda ARN from typing in app to adding to app settings in the API (easier to install) and it is backwards compatible
 *		04/13/2019	Version: 5.0 R.0.0.3	Added toggle to activate weather alerts checks every 15 minutes
 *		01/13/2019	Version: 5.0 R.0.0.2	Added ability to have multi room commands (turn on lights in living room and turn on lights in kitchen)
 *     	01/12/2019	Version: 5.0 R.0.0.1c	License update/change
@@ -49,6 +50,8 @@ import java.security.MessageDigest
 
 include 'asynchttp_v1'
 
+private getLarn()		{ appSettings.LambdaArn }
+
 definition(
 	name			: "EchoSistant",
     namespace		: "Echo",
@@ -60,7 +63,9 @@ definition(
 	iconX2Url		: "https://raw.githubusercontent.com/BamaRayne/Echosistant/master/smartapps/bamarayne/echosistant.src/app-Echosistant@2x.png",
 	iconX3Url		: "https://raw.githubusercontent.com/BamaRayne/Echosistant/master/smartapps/bamarayne/echosistant.src/app-Echosistant@2x.png")
 {
-//	appSetting "cookie1"
+
+	appSetting "LambdaArn"
+
 }
 /**********************************************************************************************************************************************
 	UPDATE LINE 38 TO MATCH RECENT RELEASE
@@ -69,7 +74,7 @@ private def textVersion() {
 	def text = "1.0"
 }
 private release() {
-    def text = "Version 5.0, Revision 0.0.3"
+    def text = "Version 5.0, Revision 0.0.4"
 }
 /**********************************************************************************************************************************************/
 preferences {   
@@ -386,12 +391,25 @@ def OAuthToken(){
 /*************************************************************************************************************
    LAMBDA DATA MAPPING
 ************************************************************************************************************/
-mappings {
+/*mappings {
     path("/b") { action: [GET: "processBegin"]}
 	path("/t") { action: [GET: "processTts"] }
     path("/renderAwsCopyText") { action: [GET: "renderAwsCopyText"] }
-    }
+    }*/
 
+/*************************************************************************************************************
+   LAMBDA DATA MAPPING
+************************************************************************************************************/
+mappings {
+	path("/cntrlList") {action: [GET: "controlList"]}	
+    path("/devList") {action: [GET: "deviceList"]}
+    path("/b") { action: [GET: "processBegin"] }
+	path("/c") { action: [GET: "controlDevices"] }
+	path("/f") { action: [GET: "feedbackHandler"] }
+	path("/r") { action: [GET: "remindersHandler"] }
+	path("/s") { action: [GET: "controlSecurity"] }
+	path("/t") { action: [GET: "processTts"] }
+}
 
 /************************************************************************************************************
 		Base Process
@@ -457,7 +475,7 @@ def initialize() {
         //Other Settings
             state.lastAction = null
 			state.lastActivity = null
-			state.pendingConfirmation = false
+			state.pendingConfirmation = true
 }
 /*def getProfileList(){
 		return getChildApps()*.label
@@ -479,7 +497,7 @@ def processBegin(){
         state.lambdatextVersion = versionTxt
     def versionSTtxt = textVersion()
     def releaseSTtxt = release()
-    def pPendingAns = false 
+    def pPendingAns = light 
     def pContinue = state.pMuteAlexa
     def pShort = state.pShort
     def String outputTxt = (String) null 
@@ -652,8 +670,7 @@ def processTts(tts) {
                 	log.warn "Found a second profile: $childName"
                         dataSet = [ptts:ttsText, pintentName:childName] 
 					
-                    if (ptts.startsWith("did") || ptts.contains("tell me about") || ptts.startsWith("get") || ptts.endsWith("tonight") || ptts.contains("weather") || ptts.contains("temperature") || ptts.contains("forecast") || ptts.contains("humidity") || ptts.contains("rain") || ptts.contains("wind") || //) {
-					ptts.startsWith("for") || ptts.startsWith("is") || ptts.startsWith("has") || ptts.startsWith("give") || ptts.startsWith("how") || ptts.startsWith("what") || ptts.startsWith("when") || ptts.startsWith("which") || ptts.startsWith("are") || ptts.startsWith("check") || ptts.startsWith("who")) {
+                    if (ptts.startsWith("did") || ptts.contains("tell me about") || ptts.startsWith("get") || ptts.endsWith("tonight") || ptts.contains("weather") || ptts.contains("temperature") || ptts.contains("forecast") || ptts.contains("humidity") || ptts.contains("rain") || ptts.contains("wind") || ptts.startsWith("for") || ptts.startsWith("is") || ptts.startsWith("has") || ptts.startsWith("give") || ptts.startsWith("how") || ptts.startsWith("what") || ptts.startsWith("when") || ptts.startsWith("which") || ptts.startsWith("are") || ptts.startsWith("check") || ptts.startsWith("who")) {
                     	def pResponse = child.profileFeedbackEvaluate(dataSet)
                         outputTxt = pResponse.outputTxt
                     	pContCmds = pResponse.pContCmds
@@ -694,8 +711,7 @@ def processTts(tts) {
 					def childRelease = child.checkRelease()
 					log.warn "childRelease = $childRelease"
 
-					if (ptts.startsWith("did") || ptts.startsWith("tell") || ptts.startsWith("get") || ptts.endsWith("tonight") || ptts.contains("weather") || ptts.startsWith("tell me about") || ptts.contains("temperature") || ptts.contains("forecast") || ptts.contains("humidity") || ptts.contains("rain") || ptts.contains("wind") || //) {
-                    ptts.startsWith("for") || ptts.startsWith("is") || ptts.startsWith("has") || ptts.startsWith("give") || ptts.startsWith("how") || ptts.startsWith("what") || ptts.startsWith("when") || ptts.startsWith("which") || ptts.startsWith("are") || ptts.startsWith("check") || ptts.startsWith("who")) {
+					if (ptts.startsWith("did") || ptts.startsWith("tell") || ptts.startsWith("get") || ptts.endsWith("tonight") || ptts.contains("weather") || ptts.startsWith("tell me about") || ptts.contains("temperature") || ptts.contains("forecast") || ptts.contains("humidity") || ptts.contains("rain") || ptts.contains("wind") || ptts.startsWith("for") || ptts.startsWith("is") || ptts.startsWith("has") || ptts.startsWith("give") || ptts.startsWith("how") || ptts.startsWith("what") || ptts.startsWith("when") || ptts.startsWith("which") || ptts.startsWith("are") || ptts.startsWith("check") || ptts.startsWith("who")) {
                     	def pResponse = child.profileFeedbackEvaluate(dataSet)
                         outputTxt = pResponse.outputTxt
                     	pContCmds = pResponse.pContCmds
@@ -1176,6 +1192,7 @@ def processActionsPage(params){
 }
 
 def awsSkillConfigPage(){
+	log.warn "Larn is: $LARN"
     atomicState?.actionsProcDone = false
     dynamicPage(name: "awsSkillConfigPage", uninstall: false, install: false) {
         def locale = getSkillLocale()
@@ -1211,8 +1228,11 @@ def awsSkillConfigPage(){
                                 def skillVendorData = getSkillVendorById(vendId)?.skills?.findAll { it?.nameByLocale?."${locale}"?.startsWith("EchoSistant - ") }
                                 atomicState?.skillVendorData = skillVendorData
 							section ("Lambda ARN") {
-                        		input "LARN", "text", title: "Input your ARN Exactly as shown on the Lambda Page", required: true, submitOnChange: true
-                            	}
+                            	def LARN = getLarn()
+                        		if (!LARN) {
+                                input "LARN", "text", title: "Input your ARN Exactly as shown on the Lambda Page", required: false, submitOnChange: true
+                            		}
+                                }
                                 if(skillVendorData?.size()) {    
                                     section("Skills Configured") {
                                         paragraph title: "NOTICE", "Skills Are NOT Enabled by default\nPlease click on a Skill below to Open under the Alexa Mobile App where you can enable it.", required: true, state: null
@@ -1423,7 +1443,7 @@ def makeSkillRequests(params, reqType, type, logOutput=false) {
 }
 
 def generateSkillManifest(skillName, vendorId, lambArn, retJson=true) {
-    lambArn = LARN
+    lambArn = LARN //getLarn()
     log.debug "generateSkillManifest | skillName: $skillName | vendId: $vendorId | lambArn: $lambArn | region: ${getSkillLocale()}"
     def exampItems = []
     if(skillName == settings?.defaultInvocation) { 
@@ -2016,3 +2036,5 @@ void actionMaintCheck(data) {
         }
     }
 }
+
+  
