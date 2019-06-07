@@ -1,10 +1,11 @@
 /* 
 * EchoSistant Rooms Profile - EchoSistant Add-on
 *
+*		06/07/2019		Version:5.0 R.0.0.15	Added restrictions check for weather alerts
 *		06/06/2019		Version:5.0 R.0.0.14	Minor bug fixes and tweaks to different things
 *		05/23/2019		Version:5.0 R.0.0.13	Added ability to ask when a contact status was last changed, and when a person last arrived/departed
 *		04/21/2019		Version:5.0 R.0.0.12	Bug fix when asking WHAT in feedback. Added "Tell me about the xxx devices"
-*		04/20/2019		Version:5.0	R.0.0.11	Updated and fixed bugs in weather alerts. Also added restrictions check for weather alerts
+*		04/20/2019		Version:5.0	R.0.0.11	Updated and fixed bugs in weather alerts.
 *		04/13/2019		Version:5.0 R.0.0.10	Added weather alert checks every 15 minutes and ability to ask for a weather alert 
 *		03/14/2019		Version:5.0 R.0.0.9		Bug fix for returning a list of devices in feedback
 *		03/09/2019		Version:5.0 R.0.0.8		Added Thermostats feedback
@@ -103,7 +104,7 @@ private release() {
 	def text = "R.0.4.6"
 }
 private revision(text) {
-	text = "Version 5.0, Revision 0.0.14"
+	text = "Version 5.0, Revision 0.0.15"
     state.version = "${text}"
     return text
     }
@@ -545,7 +546,8 @@ def cDevices() {
                 	input "alertTxt", "bool", title: "Send a text when a weather alert is received", required: false, defaultValue: false, submitOnChange: true
             		if (alertTxt) {
                 	input name: "smsAlert", title: "Send Text to this number", type: "phone", required: true
-                }
+                	}
+             		href "alertRestrict", title: "Weather Alert Restrictions"//, description: VPNotifyComplete(), state: VPNotifySettings()	
             }
         }        
         section ("Controllable Devices") {}
@@ -673,6 +675,56 @@ def certainTime() {
             else {
                 if(endingX == "Sunrise") input "endSunriseOffset", "number", range: "*..*", title: "Offset in minutes (+/-)", required: false, submitOnChange: true
                 else if(endingX == "Sunset") input "endSunsetOffset", "number", range: "*..*", title: "Offset in minutes (+/-)", required: false, submitOnChange: true
+                    }
+        }
+    }
+}
+
+/************************************************************************************************************
+		Weather Alert Restrictions Page
+************************************************************************************************************/    
+page name: "alertRestrict"
+def alertRestrict(){
+    dynamicPage(name: "alertRestrict", title: "", uninstall: false) {
+        section ("Mode Restrictions") {
+            input "alertMode", "mode", title: "Only when mode is", multiple: true, required: false
+        }        
+        section ("Days - Audio only on these days"){	
+            input "alertDays", title: "Only on certain days of the week", multiple: true, required: false, submitOnChange: true,
+                "enum", options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+        }
+        section ("Time - Audio only during these times"){
+            href "alertTime", title: "Only during a certain time", description: pTimeComplete() , state: pTimeSettings()
+        }
+        section ("Switches") {
+            input "alertSwitch", "capability.switch", title: "Only when this switch...", multiple: true, required: false, submitOnChange: true
+            if (alertSwitch) {
+                input "alertSwitchCmd", "enum", title: "is in the $alertSwitchCmd position...",
+                    options:["on":"On","off":"Off"], multiple: false, required: false, submitOnChange:true
+    		}
+            if (alertSwitch?.size() > 1) {
+                input "alertSwitchAll", "bool", title: "Activate this toggle if you want ALL of the switches to be $alertSwitchCmd as a condition.", required: false, defaultValue: false, submitOnChange: true
+            }
+        }
+    }
+}
+page name: "alertTime"
+def alertTime() {
+    dynamicPage(name:"alertTime",title: "Only during a certain time", uninstall: false) {
+        section("Beginning at....") {
+            input "startingXA", "enum", title: "Starting at...", options: ["A specific time", "Sunrise", "Sunset"], required: false , submitOnChange: true
+            if(startingXA in [null, "A specific time"]) input "startingA", "time", title: "Start time", required: false, submitOnChange: true
+            else {
+                if(startingXA == "Sunrise") input "startSunriseOffsetA", "number", range: "*..*", title: "Offset in minutes (+/-)", required: false, submitOnChange: true
+                else if(startingXA == "Sunset") input "startSunsetOffsetA", "number", range: "*..*", title: "Offset in minutes (+/-)", required: false, submitOnChange: true
+                    }
+        }
+        section("Ending at....") {
+            input "endingXA", "enum", title: "Ending at...", options: ["A specific time", "Sunrise", "Sunset"], required: false, submitOnChange: true
+            if(endingXA in [null, "A specific time"]) input "endingA", "time", title: "End time", required: false, submitOnChange: true
+            else {
+                if(endingXA == "Sunrise") input "endSunriseOffsetA", "number", range: "*..*", title: "Offset in minutes (+/-)", required: false, submitOnChange: true
+                else if(endingXA == "Sunset") input "endSunsetOffsetA", "number", range: "*..*", title: "Offset in minutes (+/-)", required: false, submitOnChange: true
                     }
         }
     }
@@ -3028,6 +3080,112 @@ private timeIntervalLabel() {
                                     }
 
 /***********************************************************************************************************************
+	ALERT RESTRICTIONS HANDLER
+***********************************************************************************************************************/
+private getAllAlertsOk() {
+    alertModeOk && alertDaysOk && alertTimeOk && alertSwitchesOk
+}
+private getAlertSwitchesOk() {
+	def result = false
+	def devList = []
+    if (alertSwitch == null) { result = true }
+    if (alertSwitch) {
+    if (parent.trace) log.trace "Conditions: Switches events method activated"
+        def alertSwitchSize = alertSwitch?.size()
+        alertSwitch.each { deviceName ->
+            def status = deviceName.currentValue("switch")
+            if (status == "${alertSwitchCmd}"){ 
+                String device  = (String) deviceName
+                devList += device
+            }
+        }
+        def devListSize = devList?.size()
+        if(!alertSwitchAll) {
+            if (devList?.size() > 0) { 
+                result = true 
+                if(parent.debug) log.debug "alertSwitchesOk = $result"
+            }
+            result
+        }        
+        if(alertSwitchAll) {
+            if (devList?.size() == alertSwitch?.size()) { 
+                result = true
+                if(parent.debug) log.debug "alertSwitchesOk = $result"
+            }
+            result
+        }
+        if (result == false) log.debug "alertSwitchesOk = $result"
+    }
+    result
+}
+
+private getAlertModeOk() {
+    def result = !alertMode || alertMode?.contains(location.mode)
+//    if (alertModeOk != null) { if(parent.debug) log.debug "alertModeOk = $result" }
+    result
+} 
+private getAlertDaysOk() {
+    def result = true
+    if (alertDays) {
+        def df = new java.text.SimpleDateFormat("EEEE")
+        if (location.timeZone) {
+            df.setTimeZone(location.timeZone)
+        }
+        else {
+            df.setTimeZone(TimeZone.getTimeZone("America/New_York"))
+        }
+        def day = df.format(new Date())
+        result = day.contains(alertDays)
+    }
+//    if(parent.debug) log.debug "alertDaysOk = $result"
+    result
+}
+        
+private getAlertTimeOk() {
+    def result = true
+    if ((startingA && endingA) ||
+        (startingA && endingXA in ["Sunrise", "Sunset"]) ||
+        (startingXA in ["Sunrise", "Sunset"] && endingA) ||
+        (startingXA in ["Sunrise", "Sunset"] && endingXA in ["Sunrise", "Sunset"])) {
+        def currTime = now()
+        def start = null
+        def stop = null
+        def s = getSunriseAndSunset(zipCode: zipCode, sunriseOffset: startSunriseOffset, sunsetOffset: startSunsetOffset)
+        if(startingXA == "Sunrise") start = s.sunrise.time
+        else if(startingXA == "Sunset") start = s.sunset.time
+            else if(startingA) start = timeToday(startingA,location.timeZone).time
+                s = getSunriseAndSunset(zipCode: zipCode, sunriseOffset: endSunriseOffset, sunsetOffset: endSunsetOffset)
+            if(endingXA == "Sunrise") stop = s.sunrise.time
+            else if(endingXA == "Sunset") stop = s.sunset.time
+                else if(endingA) stop = timeToday(endingA,location.timeZone).time
+                    result = start < stop ? currTime >= start && currTime <= stop : currTime <= stop || currTime >= start
+            if (parent.debug) log.trace "getAlertTimeOk = $result."
+            }
+    return result
+}
+private hhmmAlert(time, fmt = "h:mm a") {
+    def t = timeToday(time, location.timeZone)
+    def f = new java.text.SimpleDateFormat(fmt)
+    f.setTimeZone(location.timeZone ?: timeZone(time))
+    f.format(t)
+}
+private offsetAlert(value) {
+    def result = value ? ((value > 0 ? "+" : "") + value + " min") : ""
+}
+private timeIntervalLabelAlert() {
+    def result = "complete"
+    if      (startingXA == "Sunrise" && endingXA == "Sunrise") result = "Sunrise" + offsetA(startSunriseOffset) + " to Sunrise" + offsetA(endSunriseOffset)
+    else if (startingXA == "Sunrise" && endingXA == "Sunset") result = "Sunrise" + offsetA(startSunriseOffset) + " to Sunset" + offsetA(endSunsetOffset)
+        else if (startingXA == "Sunset" && endingXA == "Sunrise") result = "Sunset" + offsetA(startSunsetOffset) + " to Sunrise" + offsetA(endSunriseOffset)
+            else if (startingXA == "Sunset" && endingXA == "Sunset") result = "Sunset" + offsetA(startSunsetOffset) + " to Sunset" + offsetA(endSunsetOffset)
+                else if (startingXA == "Sunrise" && endingA) result = "Sunrise" + offsetA(startSunriseOffset) + " to " + hhmmAlert(ending, "h:mm a z")
+                    else if (startingXA == "Sunset" && ending) result = "Sunset" + offsetA(startSunsetOffset) + " to " + hhmmAlert(ending, "h:mm a z")
+                        else if (startingA && endingXA == "Sunrise") result = hhmmAlert(startingA) + " to Sunrise" + offsetA(endSunriseOffset)
+                            else if (startingA && endingXA == "Sunset") result = hhmm(startingA) + " to Sunset" + offsetA(endSunsetOffset)
+                                else if (startingA && endingA) result = hhmmAlert(starting) + " to " + hhmmSlert(ending, "h:mm a z")
+                                    }
+
+/***********************************************************************************************************************
 SMS HANDLER
 ***********************************************************************************************************************/
 private void sendtxt(message) {
@@ -5100,6 +5258,8 @@ def remindRProfiles(evt) {
     WEATHER ALERTS
 ***********************************************************************************************************************/
 def verbalWeatherAlerts(){
+//	if (getAllAlertsOk() == true) {
+//    log.warn "AlertModeOk = $alertModeOk, AlertDaysOk = $alertDaysOk, AlertTimeOk = $alertTimeOk, AlertSwitchesOk = $alertSwitchesOk"
     def pws = getTwcPwsConditions("KALCHELS18")
     log.info "personal is: $pws"
     def currAlert = "There are no weather alerts for your area at this time"
@@ -5118,11 +5278,17 @@ def verbalWeatherAlerts(){
         return currAlert
     }
     return currAlert
-}
+    }
+//	if (getAllAlertsOk() == false) {
+//		log.warn "A weather alert was issued but was not announced due to your weather alert restrictions"
+//    }
+//}
 
 // SCHEDULED WEATHER ALERT CHECKS (EVERY 15 MINUTES)
 def mGetWeatherAlerts(){
-	def tts
+	if (getAllAlertsOk() == true) {
+    log.warn "AlertModeOk = $alertModeOk, AlertDaysOk = $alertDaysOk, AlertTimeOk = $alertTimeOk, AlertSwitchesOk = $alertSwitchesOk"
+    def tts
     def currAlert
 	def weather = getTwcAlerts() 
     def alert = weather.headlineText[0]
@@ -5134,27 +5300,21 @@ def mGetWeatherAlerts(){
     alert = alert?.replaceAll(~/ EDT/, " ")?.replaceAll(~/ CDT/, " ")?.replaceAll(~/ MDT/, " ")?.replaceAll(~/ PDT/, " ")
 
 if (alert != null) {
-	
-    if (state.oldAlert == null) {  // New alert issued
+	if (state.oldAlert == null) {  // New alert issued
 		currAlert = "Attention, The " + source + " has issued a " + alert + " , I repeat: The " + source + " has issued a " + alert
         state.oldAlert = "${currAlert}"
-        log.info "Line 2 - output should be a new alert: $currAlert  & oldAlert is: $state.oldAlert"
    		tts = currAlert
         ttsActions(tts)
-    //    return currAlert
         }
 	if (state.oldAlert != null) {  // Alert already issued but now has been updated
 		currAlert = "Attention, the weather has been updated:  The " + source + " has issued a " + alert + " , I repeat: The " + source + " has issued a " + alert
         if (state.oldAlert != currAlert) {  
         state.oldAlert = "${currAlert}" 
-        log.info "Line 3 - output should be a changed alert: $currAlert  & oldAlert is: $state.oldAlert"
         tts = currAlert
         ttsActions(tts)
-    //    return currAlert
         }
         if (state.oldAlert == currAlert) {  // The alert has not changed since the last check
         state.oldAlert = "${currAlert}" 
-        log.info "Line 5 - output should be an unchanged alert: $currAlert  & oldAlert is: $state.oldAlert"
         def thing = "Unchanged Alert"
         return thing
         }
@@ -5162,26 +5322,24 @@ if (alert != null) {
 }
 
 if (alert == null) {
-log.info "Alert is $alert & oldAlert starts as: $oldAlert"
 	if (state.oldAlert != null) {  // current alert has been lifted
 		currAlert = "Attention, The alert for your area has been lifted, I repeat, the alert for your area has been lifted"
         state.oldAlert = null
-		log.info "Line 4 - output should be alert lifted: $currAlert  & oldAlert is: $state.oldAlert"
-   		tts = currAlert
+		tts = currAlert
         ttsActions(tts)
-   //     return currAlert
         }
 	if (state.oldAlert == null)  {  // no weather alert
 		currAlert = "There are currently no alerts for your area"
         state.oldAlert = null 
 		log.info "Line 1 - output should be no alert: $currAlert  & oldAlert is: $state.oldAlert"
-   	//	tts = currAlert
-    //    ttsActions(tts)
         return currAlert
         }
     }    
 }
-
+if (getAllAlertsOk() == false) {
+	log.warn "A weather alert was issued but was not announced due to your weather alert restrictions"
+    }
+}
 /******************************************************************************
 	 FEEDBACK SUPPORT - ADDITIONAL FEEDBACK	
      
@@ -5244,4 +5402,3 @@ def getMoreFeedback(data) {
 
 	return outputTxt  //":outputTxt, "pContCmds":state.pContCmds, "pShort":state.pShort, "pContCmdsR":state.pContCmdsR, "pTryAgain":state.pTryAgain, "pPIN":pPIN	
 }    
-    
