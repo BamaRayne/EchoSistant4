@@ -35,7 +35,7 @@
                 "iconUrl": "https://raw.githubusercontent.com/BamaRayne/Echosistant/master/smartapps/bamarayne/echosistant.src/app-Echosistant.png",
                 "published": true,
                 "oAuth": false,
-                "version": "Version 5.0, Revision 0.0.14",
+                "version": "Version 5.0, Revision 0.0.15",
                 "appSettings": {},
                 "appUrl": "smartapps/echo/echosistant-rooms.src/echosistant-rooms.groovy",
                 "optional": false
