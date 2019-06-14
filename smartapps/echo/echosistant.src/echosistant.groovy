@@ -8,6 +8,7 @@
  
 ************************************ FOR INTERNAL USE ONLY ******************************************************
 *
+*		06/17/2019	Version: 5.0 R.0.0.5	Bug fix in LARN
 *		06/04/2019	Version: 5.0 R.0.0.4	Changed Lambda ARN from typing in app to adding to app settings in the API (easier to install) and it is backwards compatible
 *		04/13/2019	Version: 5.0 R.0.0.3	Added toggle to activate weather alerts checks every 15 minutes
 *		01/13/2019	Version: 5.0 R.0.0.2	Added ability to have multi room commands (turn on lights in living room and turn on lights in kitchen)
@@ -74,7 +75,7 @@ private def textVersion() {
 	def text = "1.0"
 }
 private release() {
-    def text = "Version 5.0, Revision 0.0.4"
+    def text = "Version 5.0, Revision 0.0.5"
 }
 /**********************************************************************************************************************************************/
 preferences {   
@@ -1443,7 +1444,7 @@ def makeSkillRequests(params, reqType, type, logOutput=false) {
 }
 
 def generateSkillManifest(skillName, vendorId, lambArn, retJson=true) {
-    lambArn = LARN //getLarn()
+    lambArn = getLarn()
     log.debug "generateSkillManifest | skillName: $skillName | vendId: $vendorId | lambArn: $lambArn | region: ${getSkillLocale()}"
     def exampItems = []
     if(skillName == settings?.defaultInvocation) { 
